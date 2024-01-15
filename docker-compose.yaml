@@ -1,0 +1,13 @@
+version: "3"
+
+services:
+  telarr:
+    image: "linuxserver/alpine-base"
+    container_name: "telarr"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    volumes:
+      - /path/to/appdata/configFile.yaml:/config/config.yaml
+      - /path/to/auth/files:/opt/telarr/auth # autorized.json, blacklist.json, admin.json
