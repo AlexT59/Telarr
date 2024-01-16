@@ -15,16 +15,30 @@ const (
 	defaultConfigPath = "./configuration"
 	// configFileName is the name of the configuration file
 	configFileName = "config.yaml"
+
+	configEnv = "CONFIG_PATH"
 )
 
 type Configuration struct {
-	Telegram *Telegram `yaml:"telegram"`
+	Telegram Telegram `yaml:"telegram"`
+	Radarr   Radarr   `yaml:"radarr"`
+	Sonarr   Sonarr   `yaml:"sonarr"`
 }
 
 type Telegram struct {
 	// Token token to use with the telegram API
-	Token string `yaml:"token"`
+	Token  string `yaml:"token"`
 	Passwd string `yaml:"passwd"`
+}
+
+type Radarr struct {
+	ApiKey   string `yaml:"apiKey"`
+	Endpoint string `yaml:"endpoint"`
+}
+
+type Sonarr struct {
+	ApiKey  string `yaml:"apiKey"`
+	Endpoint string `yaml:"endpoint"`
 }
 
 // GetConfiguration returns the configuration
@@ -36,6 +50,10 @@ func GetConfiguration() (Configuration, error) {
 	bytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return Configuration{}, err
+	}
+
+	if len(bytes) == 0 {
+		return Configuration{}, fmt.Errorf("configuration file is empty")
 	}
 
 	// parse the configuration file
@@ -51,12 +69,20 @@ func GetConfiguration() (Configuration, error) {
 		return Configuration{}, fmt.Errorf("TelegramToken is empty")
 	}
 
+	// check if the endpoints contain http or https
+	if !strings.HasPrefix(config.Radarr.Endpoint, "http") {
+		config.Radarr.Endpoint = "http://" + config.Radarr.Endpoint
+	}
+	if !strings.HasPrefix(config.Sonarr.Endpoint, "http") {
+		config.Sonarr.Endpoint = "http://" + config.Sonarr.Endpoint
+	}
+
 	return config, nil
 }
 
 // getConfigPath returns the path to the configuration file
 func getConfigPath() string {
-	configPath := os.Getenv("CONFIG_PATH")
+	configPath := os.Getenv(configEnv)
 	if len(configPath) == 0 {
 		configPath = defaultConfigPath
 	}

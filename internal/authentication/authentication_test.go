@@ -9,7 +9,7 @@ import (
 func TestNew(t *testing.T) {
 	authPath = t.TempDir()
 	conf := configuration.Configuration{
-		Telegram: &configuration.Telegram{
+		Telegram: configuration.Telegram{
 			Passwd: "password",
 		},
 	}
@@ -43,8 +43,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestAuth_CheckAutorized(t *testing.T) {
-	conf := &configuration.Configuration{
-		Telegram: &configuration.Telegram{
+	conf := configuration.Configuration{
+		Telegram: configuration.Telegram{
 			Passwd: "password",
 		},
 	}
@@ -106,7 +106,7 @@ func TestAuth_CheckAutorized(t *testing.T) {
 				Blacklist: tt.fields.Blacklist,
 				Autorized: tt.fields.Autorized,
 				Attempts:  tt.fields.Attempts,
-				conf:      *conf,
+				conf:      conf,
 			}
 			if got := a.CheckAutorized(tt.args.userName); got != tt.want {
 				t.Errorf("Auth.CheckAutorized() = %v, want %v", got, tt.want)
@@ -117,8 +117,8 @@ func TestAuth_CheckAutorized(t *testing.T) {
 
 func TestAuth_Autorize(t *testing.T) {
 	authPath = t.TempDir()
-	conf := &configuration.Configuration{
-		Telegram: &configuration.Telegram{
+	conf := configuration.Configuration{
+		Telegram: configuration.Telegram{
 			Passwd: "password",
 		},
 	}
@@ -184,7 +184,7 @@ func TestAuth_Autorize(t *testing.T) {
 				Blacklist: tt.fields.Blacklist,
 				Autorized: tt.fields.Autorized,
 				Attempts:  tt.fields.Attempts,
-				conf:      *conf,
+				conf:      conf,
 			}
 			if got, _ := a.AutorizeNewUser(tt.args.userName, tt.args.password); got != tt.want {
 				t.Errorf("Auth.Autorize() = %v, want %v", got, tt.want)

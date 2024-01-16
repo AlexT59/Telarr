@@ -2,9 +2,12 @@ package messages
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"telarr/configuration"
 	"telarr/internal/authentication"
+	"telarr/internal/radarr"
+	"telarr/internal/sonarr"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -109,18 +112,15 @@ func (mess *Message) Start(ctx context.Context) error {
 				switch authorized {
 				case authentication.AuthStatusBlackListed:
 					log.Warn().Str("username", update.Message.From.Username).Msg("user is blacklisted")
-					err := mess.SendMessage(update.Message.Chat.ID, "You are blacklisted!\nPlease contact the administrator to remove you from the blacklist.")
-					if err != nil {
-						log.Err(err).Msg("error when sending message")
-					}
+					mess.SendMessage(update.Message.Chat.ID, "You are blacklisted!\nPlease contact the administrator to remove you from the blacklist.")
 					continue
 				case authentication.AuthStatusError:
 					log.Err(err).Msg("error when checking authorization")
-					err = mess.SendMessage(update.Message.Chat.ID, "An error occurred while checking your authorization.\nPlease contact the administrator.")
+					mess.SendMessage(update.Message.Chat.ID, "An error occurred while checking your authorization.\nPlease contact the administrator.")
 					continue
 				case authentication.AuthStatusNewUser:
 					log.Info().Str("username", update.Message.From.Username).Msg("new user")
-					err = mess.SendMessage(update.Message.Chat.ID, "Welcome to the group "+update.Message.From.FirstName+"!\nPlease enter the password 🔑:")
+					mess.SendMessage(update.Message.Chat.ID, "Welcome to the group "+update.Message.From.FirstName+"!\nPlease enter the password 🔑:")
 
 					// create the channel for the password
 					textChan := make(chan string)
@@ -142,18 +142,40 @@ func (mess *Message) Start(ctx context.Context) error {
 						log.Debug().Str("username", update.Message.From.Username).Str("command", update.Message.Command()).Msg("command received")
 						switch update.Message.Command() {
 						case "help":
-							err = mess.SendMessage(update.Message.Chat.ID, help())
+							mess.SendMessage(update.Message.Chat.ID, printHelp())
+							continue
+						case "movies":
+							log.Trace().Str("username", update.Message.From.Username).Msg("getting movies list")
+							films, err := radarr.GetFilmsList(mess.config.Radarr)
 							if err != nil {
-								log.Err(err).Msg("error when sending message")
+								log.Err(err).Msg("error when getting movies list")
+								mess.SendMessage(update.Message.Chat.ID, "An error occurred while getting the movies list.\nPlease contact the administrator.")
+								continue
 							}
+
+							mess.SendMessage(update.Message.Chat.ID, printMoviesList(films))
 							continue
 						case "addmovie":
+							log.Trace().Str("username", update.Message.From.Username).Msg("adding movie")
 							usersActions[update.Message.From.ID] = "addmovie"
+						case "series":
+							log.Trace().Str("username", update.Message.From.Username).Msg("getting series list")
+							series, err := sonarr.GetSeriesList(mess.config.Sonarr)
+							if err != nil {
+								log.Err(err).Msg("error when getting series list")
+								mess.SendMessage(update.Message.Chat.ID, "An error occurred while getting the series list.\nPlease contact the administrator.")
+								continue
+							}
+
+							mess.SendMessage(update.Message.Chat.ID, printSeriesList(series))
+							continue
 						case "addserie":
+							log.Trace().Str("username", update.Message.From.Username).Msg("adding serie")
 							usersActions[update.Message.From.ID] = "addserie"
 						case "stop":
+							log.Trace().Str("username", update.Message.From.Username).Msg("canceling action")
 							delete(usersActions, update.Message.From.ID)
-							err = mess.SendMessage(update.Message.Chat.ID, "Action canceled ✅")
+							mess.SendMessage(update.Message.Chat.ID, "Action canceled ✅")
 						}
 					} else {
 						// if it's a message
@@ -162,7 +184,7 @@ func (mess *Message) Start(ctx context.Context) error {
 							case "addmovie":
 							case "addserie":
 							default:
-								err = mess.SendMessage(update.Message.Chat.ID, "I don't understand what you mean.\nPlease use /help to see the commands list.")
+								mess.SendMessage(update.Message.Chat.ID, "I don't understand what you mean.\nPlease use /help to see the commands list.")
 							}
 						}
 					}
@@ -181,7 +203,7 @@ func (mess *Message) Stop() error {
 
 /* Internal */
 
-func (mess *Message) SendMessage(chatID int64, text string) error {
+func (mess *Message) SendMessage(chatID int64, text string) {
 	_, err := mess.bot.SendMessage(telegram.SendMessage{
 		ChatID:    chatID,
 		Text:      text,
@@ -189,14 +211,12 @@ func (mess *Message) SendMessage(chatID int64, text string) error {
 	})
 	if err != nil {
 		log.Err(err).Msg("error when sending message")
-		return err
 	}
-	return nil
 }
 
 /* Tools */
 
-func help() string {
+func printHelp() string {
 	str := "/help - 📋 Show commands list\n"
 
 	// movies
@@ -212,6 +232,24 @@ func help() string {
 	// commands
 	str += "\n🔧 *Commands*\n"
 	str += "/stop - 🛑 Cancel the current action"
+
+	return str
+}
+
+func printMoviesList(list []radarr.Film) string {
+	str := "🎬 *Movies*\n"
+	for _, film := range list {
+		str += film.Title + " (" + strconv.Itoa(film.Year) + ")\n"
+	}
+
+	return str
+}
+
+func printSeriesList(list []sonarr.Serie) string {
+	str := "📺 *Series*\n"
+	for _, serie := range list {
+		str += serie.Title + " (" + strconv.Itoa(serie.Year) + ")\n"
+	}
 
 	return str
 }

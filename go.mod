@@ -2,6 +2,8 @@ module telarr
 
 go 1.21.6
 
+require gopkg.in/yaml.v3 v3.0.1
+
 require (
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
@@ -18,8 +20,9 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	gitlab.com/toby3d/telegram v0.0.0-20200904164256-d76ec735d4fa // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
-	gopkg.in/yaml.v3 v3.0.1
+	golift.io/starr v1.0.0 // indirect
 )
