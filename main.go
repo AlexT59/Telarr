@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"telarr/configuration"
-	"telarr/internal/messages"
+	"telarr/internal/updates"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -35,8 +35,8 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	// handle messages
-	mess, err := messages.New(config)
+	// handle updates
+	mess, err := updates.New(config)
 	if err != nil {
 		log.Err(err).Msg("error when creating the messages handler")
 		ret = 1
