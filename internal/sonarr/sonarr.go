@@ -1,6 +1,7 @@
 package sonarr
 
 import (
+	"strconv"
 	"telarr/configuration"
 
 	"github.com/rs/zerolog/log"
@@ -21,6 +22,21 @@ type Serie struct {
 
 	// CoverImage is the url to the cover of the serie.
 	CoverImage string
+
+	// Rating is the rating of the serie (/10).
+	Rating float64
+	// NumberOfVotes is the number of votes for the serie.
+	NumberOfVotes int
+
+	// Overview is the overview of the serie.
+	Overview string
+	// Genres is the list of genres of the serie.
+	Genres []string
+	// Studio is the studio of the serie.
+	Studio string
+
+	// Size is the size of the serie on disk GB.
+	Size float64
 }
 
 type Season struct {
@@ -46,21 +62,7 @@ func GetSeriesList(config configuration.Sonarr) ([]Serie, error) {
 	// convert the series to the Serie struct
 	var seriesList []Serie
 	for _, serie := range series {
-		s := Serie{
-			Title:             serie.Title,
-			Year:              serie.Year,
-			TotalSeasonsCount: serie.Statistics.SeasonCount,
-		}
-
-		// get the seasons
-		for _, season := range serie.Seasons {
-			s.Seasons = append(s.Seasons, Season{
-				SeasonNumber:       season.SeasonNumber,
-				DownloadedEpisodes: season.Statistics.EpisodeFileCount,
-				TotalEpisodes:      season.Statistics.TotalEpisodeCount,
-			})
-		}
-
+		s := toSerieStruct(serie)
 		seriesList = append(seriesList, s)
 	}
 
@@ -87,25 +89,86 @@ func GetSerieDetails(config configuration.Sonarr, serieName string) ([]Serie, er
 		for _, libSerie := range libSeries {
 			// keep only series that are in the library
 			if serie.Title == libSerie.Title {
-				s := Serie{
-					Title:             serie.Title,
-					Year:              serie.Year,
-					TotalSeasonsCount: serie.Statistics.SeasonCount,
-					Seasons:           libSerie.Seasons,
-				}
-
-				// get the cover image
-				for _, image := range serie.Images {
-					if image.CoverType == "poster" {
-						s.CoverImage = image.RemoteURL
-						break
-					}
-				}
-
+				s := libSerie
 				seriesList = append(seriesList, s)
 			}
 		}
 	}
 
 	return seriesList, nil
+}
+
+/* Serie */
+
+func (s Serie) PrintSerieTitle() string {
+	str := "📺 *" + s.Title + "*"
+
+	return str
+}
+
+func (s Serie) PrintSerieDetails() string {
+	str := "📅 " + "*Release year*: " + strconv.Itoa(s.Year) + "\n"
+	str += "⭐ " + "*Rating*: " + strconv.FormatFloat(s.Rating, 'f', 1, 64) + "/10 (_" + strconv.Itoa(s.NumberOfVotes) + " votes_)\n"
+	str += "🎞 " + "*Genres*: "
+	for i, genre := range s.Genres {
+		if i != 0 {
+			str += ", "
+		}
+		str += genre
+	}
+	str += "\n"
+	str += "📝 " + "*Overview*: " + s.Overview + "\n"
+	str += "\n"
+
+	str += "💾 " + "*Size*: " + strconv.FormatFloat(s.Size, 'f', 2, 64) + " GB\n"
+
+	str += "*Seasons* (" + strconv.Itoa(s.TotalSeasonsCount) + "): \n"
+	for _, season := range s.Seasons {
+		if season.SeasonNumber == 0 {
+			str += "\t- _Specials "
+		} else {
+			str += "\t- _Season " + strconv.Itoa(season.SeasonNumber)
+		}
+		str += " (" + strconv.Itoa(season.DownloadedEpisodes) + "/" + strconv.Itoa(season.TotalEpisodes) + ")_\n"
+	}
+
+	return str
+}
+
+/* Tools */
+
+func toSerieStruct(serie *sonarr.Series) Serie {
+	s := Serie{
+		Title:             serie.Title,
+		Year:              serie.Year,
+		TotalSeasonsCount: serie.Statistics.SeasonCount,
+		Rating:            serie.Ratings.Value,
+		NumberOfVotes:     int(serie.Ratings.Votes),
+		Overview:          serie.Overview,
+		Genres:            serie.Genres,
+		Size:              float64(serie.Statistics.SizeOnDisk) / 1024 / 1024 / 1024,
+	}
+
+	// get the seasons
+	for _, season := range serie.Seasons {
+		se := Season{
+			SeasonNumber: season.SeasonNumber,
+		}
+		if season.Statistics != nil {
+			se.DownloadedEpisodes = season.Statistics.EpisodeFileCount
+			se.TotalEpisodes = season.Statistics.TotalEpisodeCount
+		}
+
+		s.Seasons = append(s.Seasons, se)
+	}
+
+	// get the cover image
+	for _, image := range serie.Images {
+		if image.CoverType == "poster" {
+			s.CoverImage = image.RemoteURL
+			break
+		}
+	}
+
+	return s
 }

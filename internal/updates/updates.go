@@ -206,6 +206,7 @@ func sendMessage(bot *telegram.Bot, p telegram.SendMessage) bool {
 	if p.ParseMode == "" {
 		p.ParseMode = telegram.ParseModeMarkdown
 	}
+	p.DisableWebPagePreview = true
 
 	_, err := bot.SendMessage(p)
 	if err != nil {
@@ -260,6 +261,7 @@ func editMessage(bot *telegram.Bot, p *telegram.EditMessageText) bool {
 	if p.ParseMode == "" {
 		p.ParseMode = telegram.ParseModeMarkdown
 	}
+	p.DisableWebPagePreview = true
 
 	_, err := bot.EditMessageText(p)
 	if err != nil {
@@ -356,16 +358,4 @@ func printSeriesList(list []sonarr.Serie) []string {
 
 func printPageNum(pageNb, totalPages int) string {
 	return "\npage " + strconv.Itoa(pageNb) + "/" + strconv.Itoa(totalPages)
-}
-
-func printMovieTitle(film radarr.Film) string {
-	str := "🎬 *" + film.Title + "* (_" + strconv.Itoa(film.Year) + "_)\n"
-
-	return str
-}
-
-func printSerieTitle(serie sonarr.Serie) string {
-	str := "📺 *" + serie.Title + "* (_" + strconv.Itoa(serie.Year) + "_)\n"
-
-	return str
 }

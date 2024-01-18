@@ -121,6 +121,15 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		if sent {
 			cb.usersAction[rcvCallback.From.ID] = "movieDetails"
 		}
+	case "backToMoviesList":
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("back to movies list")
+
+		// remove the two last messages
+		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
+		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID-1)
+
+		// show the movies list
+		sendMoviesList(cb.bot, rcvCallback.Message, cb.radarrConfig)
 
 		/* Series */
 	// get the next page of the series list
@@ -185,6 +194,15 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		if sent {
 			cb.usersAction[rcvCallback.From.ID] = "serieDetails"
 		}
+	case "backToSeriesList":
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("back to series list")
+
+		// remove the two last messages
+		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
+		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID-1)
+
+		// show the series list
+		sendSeriesList(cb.bot, rcvCallback.Message, cb.sonarrConfig)
 
 	default:
 		log.Warn().Str("username", rcvCallback.From.Username).Str("callback", rcvCallback.Data).Msg("unknown callback")

@@ -39,6 +39,7 @@ func getPageStatus(message string) (int, int, error) {
 	return pageNb, totalPages, nil
 }
 
+// getMediaListKeyboard returns the keyboard for the media type (movie or serie) to navigate between pages and show the details of a media.
 func getMediaListKeyboard(pageNb int, totalPages int, mediaType mediaType) telegram.InlineKeyboardMarkup {
 	mediaStr := string(mediaType)
 
@@ -75,7 +76,7 @@ func getNavigationKeyboard(pageNb int, totalPages int, mediaType mediaType) tele
 		}
 		row = append(row, telegram.NewInlineKeyboardButton("<- Previous", "previous"+mediaStr), telegram.NewInlineKeyboardButton("Next ->", "next"+mediaStr))
 		if totalPages > 2 && pageNb < totalPages-1 {
-			row = append(row, telegram.NewInlineKeyboardButton(">>", "last"))
+			row = append(row, telegram.NewInlineKeyboardButton(">>", "last"+mediaStr))
 		}
 	}
 
