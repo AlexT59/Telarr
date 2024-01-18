@@ -10,6 +10,9 @@ import (
 )
 
 type Serie struct {
+	TvdbId  int64
+	SerieId int64
+
 	// Title is the title of the serie.
 	Title string
 	// Year is the release year of the serie.
@@ -50,7 +53,7 @@ type Season struct {
 }
 
 func GetSeriesList(config configuration.Sonarr) ([]Serie, error) {
-	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr")
+	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for series list")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
 	r := sonarr.New(c)
 
@@ -70,7 +73,7 @@ func GetSeriesList(config configuration.Sonarr) ([]Serie, error) {
 }
 
 func GetSerieDetails(config configuration.Sonarr, serieName string) ([]Serie, error) {
-	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr")
+	log.Trace().Str("serieName", serieName).Str("endpoint", config.Endpoint).Msg("contacting radarr for serie details")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
 	r := sonarr.New(c)
 
@@ -98,10 +101,36 @@ func GetSerieDetails(config configuration.Sonarr, serieName string) ([]Serie, er
 	return seriesList, nil
 }
 
+func GetSerieName(config configuration.Sonarr, serieId int) (string, error) {
+	log.Trace().Int("serieId", serieId).Str("endpoint", config.Endpoint).Msg("contacting radarr for serie name")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := sonarr.New(c)
+
+	serie, err := r.GetSeriesByID(int64(serieId))
+	if err != nil {
+		return "", err
+	}
+
+	return serie.Title, nil
+}
+
+func RemoveSerie(config configuration.Sonarr, serieId int) error {
+	log.Trace().Int("serieId", serieId).Str("endpoint", config.Endpoint).Msg("contacting radarr to remove serie")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := sonarr.New(c)
+
+	err := r.DeleteSeries(serieId, true, false)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 /* Serie */
 
 func (s Serie) PrintSerieTitle() string {
-	str := "📺 *" + s.Title + "*"
+	str := "📺 *" + s.Title + "* (_" + strconv.Itoa(s.Year) + "_)"
 
 	return str
 }
@@ -139,6 +168,8 @@ func (s Serie) PrintSerieDetails() string {
 
 func toSerieStruct(serie *sonarr.Series) Serie {
 	s := Serie{
+		TvdbId:            serie.TvdbID,
+		SerieId:           serie.ID,
 		Title:             serie.Title,
 		Year:              serie.Year,
 		TotalSeasonsCount: serie.Statistics.SeasonCount,

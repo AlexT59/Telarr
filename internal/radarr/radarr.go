@@ -10,7 +10,9 @@ import (
 )
 
 type Film struct {
-	TmdbId int64
+	TmdbId  int64
+	MovieId int64
+
 	// Title is the title of the film.
 	Title string
 	// Year is the release year of the film.
@@ -43,7 +45,7 @@ type Film struct {
 }
 
 func GetFilmsList(config configuration.Radarr) ([]Film, error) {
-	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr")
+	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for movie list")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
 	r := radarr.New(c)
 
@@ -62,7 +64,7 @@ func GetFilmsList(config configuration.Radarr) ([]Film, error) {
 }
 
 func GetFilmDetails(config configuration.Radarr, movieName string) ([]Film, error) {
-	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr")
+	log.Trace().Str("movieName", movieName).Str("endpoint", config.Endpoint).Msg("contacting radarr for movie details")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
 	r := radarr.New(c)
 
@@ -90,10 +92,36 @@ func GetFilmDetails(config configuration.Radarr, movieName string) ([]Film, erro
 	return filmsList, nil
 }
 
+func GetMovieName(config configuration.Radarr, movieId int) (string, error) {
+	log.Trace().Int("movieId", movieId).Str("endpoint", config.Endpoint).Msg("contacting radarr for movie name")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := radarr.New(c)
+
+	movie, err := r.GetMovieByID(int64(movieId))
+	if err != nil {
+		return "", err
+	}
+
+	return movie.Title, nil
+}
+
+func RemoveFilm(config configuration.Radarr, movieId int) error {
+	log.Trace().Int("movieId", movieId).Str("endpoint", config.Endpoint).Msg("contacting radarr	to remove movie")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := radarr.New(c)
+
+	err := r.DeleteMovie(int64(movieId), true, false)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 /* Film */
 
 func (f Film) PrintMovieTitle() string {
-	str := "🎬 *" + f.Title + "*"
+	str := "🎬 *" + f.Title + "* (_" + strconv.Itoa(f.Year) + "_)"
 
 	return str
 }
@@ -133,6 +161,7 @@ func (f Film) PrintMovieDetails() string {
 func toFilmStruct(film *radarr.Movie) Film {
 	f := Film{
 		TmdbId:   film.TmdbID,
+		MovieId:  film.ID,
 		Title:    film.Title,
 		Year:     film.Year,
 		Runtime:  film.Runtime,

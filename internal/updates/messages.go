@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"strconv"
 	"telarr/configuration"
 	"telarr/internal/radarr"
 	"telarr/internal/sonarr"
@@ -68,8 +69,8 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 		log.Debug().Str("username", rcvMess.From.Username).Msg("message received")
 		if action, exist := mess.usersAction[rcvMess.From.ID]; exist {
 			switch action {
+			/* Movies */
 			case "addmovie":
-			case "addserie":
 			case "movieDetails":
 				movieName := rcvMess.Text
 				log.Trace().Str("username", rcvMess.From.Username).Str("movieName", movieName).Msg("getting movie details")
@@ -91,6 +92,30 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 				log.Trace().Str("username", rcvMess.From.Username).Str("movieName", film.Title).Msg("sending movie details")
 				sendImageMessage(mess.bot, rcvMess.Chat.ID, film.CoverImage, film.PrintMovieTitle())
 				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, film.PrintMovieDetails(), telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{telegram.NewInlineKeyboardButton("<< Back to movies list", "backToMoviesList")}))
+			case "removeMovie":
+				movieName := rcvMess.Text
+				log.Trace().Str("username", rcvMess.From.Username).Str("movieName", movieName).Msg("getting movie to remove")
+
+				foundFilms, err := radarr.GetFilmDetails(mess.radarrConfig, movieName)
+				if err != nil {
+					log.Err(err).Msg("error when getting movie details")
+					sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "An error occurred while getting the movie details.\nPlease contact the administrator.")
+					return
+				}
+
+				if len(foundFilms) == 0 {
+					sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "No movie found with this name.")
+					return
+				}
+
+				film := foundFilms[0]
+				str := film.PrintMovieTitle()
+				str += "\n_MovieId: " + strconv.Itoa(int(film.MovieId)) + "_"
+				str += "\n\nAre you sure you want to remove this movie from your library?"
+				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, str, getConfirmRemoveKeyboard(mediaTypeMovies))
+
+				/* Series */
+			case "addserie":
 			case "serieDetails":
 				serieName := rcvMess.Text
 				log.Trace().Str("username", rcvMess.From.Username).Str("serieName", serieName).Msg("getting serie details")
@@ -112,6 +137,27 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 				log.Trace().Str("username", rcvMess.From.Username).Str("serieName", serie.Title).Msg("sending serie details")
 				sendImageMessage(mess.bot, rcvMess.Chat.ID, serie.CoverImage, serie.PrintSerieTitle())
 				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, serie.PrintSerieDetails(), telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{telegram.NewInlineKeyboardButton("<< Back to series list", "backToSeriesList")}))
+			case "removeSerie":
+				serieName := rcvMess.Text
+				log.Trace().Str("username", rcvMess.From.Username).Str("serieName", serieName).Msg("getting serie to remove")
+
+				foundSeries, err := sonarr.GetSerieDetails(mess.sonarrConfig, serieName)
+				if err != nil {
+					log.Err(err).Msg("error when getting serie details")
+					sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "An error occurred while getting the serie details.\nPlease contact the administrator.")
+					return
+				}
+
+				if len(foundSeries) == 0 {
+					sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "No serie found with this name.")
+					return
+				}
+
+				serie := foundSeries[0]
+				str := serie.PrintSerieTitle()
+				str += "\n_SerieId: " + strconv.Itoa(int(serie.SerieId)) + "_"
+				str += "\n\nAre you sure you want to remove this serie from your library?"
+				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, str, getConfirmRemoveKeyboard(mediaTypeSeries))
 			default:
 				log.Warn().Str("username", rcvMess.From.Username).Str("action", action).Msg("unknown action")
 			}

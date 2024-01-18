@@ -2,6 +2,7 @@ package updates
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 	"telarr/configuration"
 	"telarr/internal/radarr"
@@ -130,6 +131,76 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 
 		// show the movies list
 		sendMoviesList(cb.bot, rcvCallback.Message, cb.radarrConfig)
+	case "removeMovie":
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("show movies list to remove")
+
+		// show the movies list into a keyboard
+		var buttons [][]*telegram.KeyboardButton
+		sort.Slice(films, func(i, j int) bool {
+			return films[i].Title < films[j].Title
+		})
+		for i := 0; i < len(films); i += 2 {
+			butRow := []*telegram.KeyboardButton{{Text: films[i].Title}}
+			if i+1 < len(films) {
+				butRow = append(butRow, &telegram.KeyboardButton{Text: films[i+1].Title})
+			}
+			buttons = append(buttons, butRow)
+		}
+		keyboard := telegram.ReplyKeyboardMarkup{
+			OneTimeKeyboard: true,
+			ResizeKeyboard:  true,
+			Keyboard:        buttons,
+		}
+		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the movie or write his name it", keyboard)
+		if sent {
+			cb.usersAction[rcvCallback.From.ID] = "removeMovie"
+		}
+	case "confirmRemoveMovie":
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("confirm remove movie")
+
+		// remove the last message
+		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
+
+		// get the TMDb ID of the movie
+		movieIdStr, found := strings.CutPrefix(strings.Split(rcvCallback.Message.Text, "\n")[1], "MovieId: ") // get the second line and remove the "MovieId: " prefix
+		if !found {
+			log.Warn().Str("username", rcvCallback.From.Username).Msg("TMDb ID not found")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while removing the movie.\nPlease contact the administrator.")
+			return
+		}
+		movieId, err := strconv.Atoi(movieIdStr)
+		if err != nil {
+			log.Err(err).Msg("error when converting TMDb ID")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while removing the movie.\nPlease contact the administrator.")
+			return
+		}
+
+		// get the movie name
+		movieName, err := radarr.GetMovieName(cb.radarrConfig, movieId)
+		if err != nil {
+			log.Err(err).Msg("error when getting movie name")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while removing the movie.\nPlease contact the administrator.")
+			return
+		}
+
+		// remove the movie
+		err = radarr.RemoveFilm(cb.radarrConfig, movieId)
+		if err != nil {
+			log.Err(err).Msg("error when removing movie")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while removing the movie.\nPlease contact the administrator.")
+			return
+		}
+
+		log.Debug().Str("movieName", movieName).Str("username", rcvCallback.From.Username).Msg("movie removed successfully")
+
+		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Movie *"+movieName+"* removed successfully! ✅")
+	case "cancelRemoveMovie":
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("cancel remove movie")
+
+		// remove the last message
+		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
+
+		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Movie not removed! ✅")
 
 		/* Series */
 	// get the next page of the series list
@@ -203,6 +274,76 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 
 		// show the series list
 		sendSeriesList(cb.bot, rcvCallback.Message, cb.sonarrConfig)
+	case "removeSerie":
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("show series list to remove")
+
+		// show the series list into a keyboard
+		var buttons [][]*telegram.KeyboardButton
+		sort.Slice(series, func(i, j int) bool {
+			return series[i].Title < series[j].Title
+		})
+		for i := 0; i < len(series); i += 2 {
+			butRow := []*telegram.KeyboardButton{{Text: series[i].Title}}
+			if i+1 < len(series) {
+				butRow = append(butRow, &telegram.KeyboardButton{Text: series[i+1].Title})
+			}
+			buttons = append(buttons, butRow)
+		}
+		keyboard := telegram.ReplyKeyboardMarkup{
+			OneTimeKeyboard: true,
+			ResizeKeyboard:  true,
+			Keyboard:        buttons,
+		}
+		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the serie or write his name it", keyboard)
+		if sent {
+			cb.usersAction[rcvCallback.From.ID] = "removeSerie"
+		}
+	case "confirmRemoveSerie":
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("confirm remove serie")
+
+		// remove the last message
+		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
+
+		// get the serie ID
+		serieIdStr, found := strings.CutPrefix(strings.Split(rcvCallback.Message.Text, "\n")[1], "SerieId: ") // get the second line and remove the "SerieId: " prefix
+		if !found {
+			log.Warn().Str("username", rcvCallback.From.Username).Msg("serie ID not found")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while removing the serie.\nPlease contact the administrator.")
+			return
+		}
+		serieId, err := strconv.Atoi(serieIdStr)
+		if err != nil {
+			log.Err(err).Msg("error when converting serie ID")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while removing the serie.\nPlease contact the administrator.")
+			return
+		}
+
+		// get the serie name
+		serieName, err := sonarr.GetSerieName(cb.sonarrConfig, serieId)
+		if err != nil {
+			log.Err(err).Msg("error when getting serie name")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while removing the serie.\nPlease contact the administrator.")
+			return
+		}
+
+		// remove the serie
+		err = sonarr.RemoveSerie(cb.sonarrConfig, serieId)
+		if err != nil {
+			log.Err(err).Msg("error when removing serie")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while removing the serie.\nPlease contact the administrator.")
+			return
+		}
+
+		log.Debug().Str("serieName", serieName).Str("username", rcvCallback.From.Username).Msg("serie removed successfully")
+
+		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Serie *"+serieName+"* removed successfully! ✅")
+	case "cancelRemoveSerie":
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("cancel remove serie")
+
+		// remove the last message
+		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
+
+		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Serie not removed! ✅")
 
 	default:
 		log.Warn().Str("username", rcvCallback.From.Username).Str("callback", rcvCallback.Data).Msg("unknown callback")

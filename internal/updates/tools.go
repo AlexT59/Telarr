@@ -43,9 +43,14 @@ func getPageStatus(message string) (int, int, error) {
 func getMediaListKeyboard(pageNb int, totalPages int, mediaType mediaType) telegram.InlineKeyboardMarkup {
 	mediaStr := string(mediaType)
 
-	keyboard := getNavigationKeyboard(pageNb, totalPages, mediaType)
-	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("ℹ️ Show "+mediaStr+" details", mediaStr+"Details")))
+	r := []rune(mediaStr)
+	capitalizedMediaStr := string(append([]rune{unicode.ToUpper(r[0])}, r[1:]...))
 
+	keyboard := getNavigationKeyboard(pageNb, totalPages, mediaType)
+	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
+		telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("ℹ️ Show "+mediaStr+" details", mediaStr+"Details")),
+		telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("🗑 Remove "+mediaStr, "remove"+capitalizedMediaStr)),
+	)
 	return keyboard
 }
 
@@ -81,4 +86,13 @@ func getNavigationKeyboard(pageNb int, totalPages int, mediaType mediaType) tele
 	}
 
 	return telegram.NewInlineKeyboardMarkup(row)
+}
+
+func getConfirmRemoveKeyboard(mediaType mediaType) telegram.InlineKeyboardMarkup {
+	r := []rune(string(mediaType))
+	mediaStr := string(append([]rune{unicode.ToUpper(r[0])}, r[1:]...))
+
+	return telegram.NewInlineKeyboardMarkup(
+		telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("Confirm ✅", "confirmRemove"+mediaStr), telegram.NewInlineKeyboardButton("Cancel ❌", "cancelRemove"+mediaStr)),
+	)
 }
