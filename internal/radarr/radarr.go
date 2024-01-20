@@ -13,6 +13,9 @@ type Film struct {
 	TmdbId  int64
 	MovieId int64
 
+	// IsInLibrary is true if the film is in the library.
+	IsInLibrary bool
+
 	// Title is the title of the film.
 	Title string
 	// Year is the release year of the film.
@@ -184,15 +187,16 @@ func (f Film) PrintMovieDetails() string {
 
 func toFilmStruct(film *radarr.Movie) Film {
 	f := Film{
-		TmdbId:   film.TmdbID,
-		MovieId:  film.ID,
-		Title:    film.Title,
-		Year:     film.Year,
-		Runtime:  film.Runtime,
-		Overview: film.Overview,
-		Genres:   film.Genres,
-		Studio:   film.Studio,
-		Size:     0,
+		TmdbId:      film.TmdbID,
+		MovieId:     film.ID,
+		IsInLibrary: film.ID > 0,
+		Title:       film.Title,
+		Year:        film.Year,
+		Runtime:     film.Runtime,
+		Overview:    film.Overview,
+		Genres:      film.Genres,
+		Studio:      film.Studio,
+		Size:        0,
 	}
 
 	if film.HasFile {

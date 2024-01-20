@@ -122,29 +122,32 @@ func getConfirmRemoveKeyboard(mediaType mediaType) telegram.InlineKeyboardMarkup
 	return telegram.InlineKeyboardMarkup{}
 }
 
-func getAddMediaKeyboard(pageNb int, totalPages int, mediaType mediaType) telegram.InlineKeyboardMarkup {
-	var addRow = telegram.NewInlineKeyboardRow()
-
+func getAddMediaKeyboard(pageNb int, totalPages int, mediaType mediaType, addable bool) telegram.InlineKeyboardMarkup {
+	var addRow []*telegram.InlineKeyboardButton
 	if mediaType == mediaTypeMovie {
 		addRow = append(addRow, telegram.NewInlineKeyboardButton("Add to Radarr 🎬", callbackNextAddMovie.String()))
 	} else if mediaType == mediaTypeSerie {
 		addRow = append(addRow, telegram.NewInlineKeyboardButton("Add to Sonarr 📺", callbackNextAddSerie.String()))
 	}
+
 	var editRow []*telegram.InlineKeyboardButton
 	if mediaType == mediaTypeMovie {
 		editRow = []*telegram.InlineKeyboardButton{
-			telegram.NewInlineKeyboardButton("Edit request 🔍", callbackEditRequestMovie.String()),
+			telegram.NewInlineKeyboardButton("Edit request 🔍", callbackEditRequestAddMovie.String()),
 			telegram.NewInlineKeyboardButton("Cancel ❌", callbackCancel.String()),
 		}
 	} else if mediaType == mediaTypeSerie {
 		editRow = []*telegram.InlineKeyboardButton{
-			telegram.NewInlineKeyboardButton("Edit request 🔍", callbackEditRequestSerie.String()),
+			telegram.NewInlineKeyboardButton("Edit request 🔍", callbackEditRequestAddSerie.String()),
 			telegram.NewInlineKeyboardButton("Cancel ❌", callbackCancel.String()),
 		}
 	}
 
 	if totalPages <= 1 {
-		return telegram.NewInlineKeyboardMarkup(addRow, editRow)
+		if addable {
+			return telegram.NewInlineKeyboardMarkup(addRow, editRow)
+		}
+		return telegram.NewInlineKeyboardMarkup(editRow)
 	}
 
 	var navRow = telegram.NewInlineKeyboardRow()
@@ -167,5 +170,8 @@ func getAddMediaKeyboard(pageNb int, totalPages int, mediaType mediaType) telegr
 		}
 	}
 
-	return telegram.NewInlineKeyboardMarkup(navRow, addRow, editRow)
+	if addable {
+		return telegram.NewInlineKeyboardMarkup(navRow, addRow, editRow)
+	}
+	return telegram.NewInlineKeyboardMarkup(navRow, editRow)
 }

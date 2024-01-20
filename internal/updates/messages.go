@@ -102,7 +102,11 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 
 				// send the first movie found
 				film := foundFilms[0]
-				sendImageMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, film.CoverImage, film.PrintMovieTitle(), getAddMediaKeyboard(1, len(foundFilms), mediaTypeMovie))
+				str := film.PrintMovieTitle()
+				if film.IsInLibrary {
+					str += "\n\nAlready in your library ✅"
+				}
+				sendImageMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, film.CoverImage, str, getAddMediaKeyboard(1, len(foundFilms), mediaTypeMovie, !film.IsInLibrary))
 			case userActionMovieDetails:
 				movieName := rcvMess.Text
 				log.Trace().Str("username", rcvMess.From.Username).Str("movieName", movieName).Msg("getting movie details")
@@ -168,7 +172,11 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 
 				// send the first serie found
 				serie := foundSeries[0]
-				sendImageMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, serie.CoverImage, serie.PrintSerieTitle(), getAddMediaKeyboard(1, len(foundSeries), mediaTypeSerie))
+				str := serie.PrintSerieTitle()
+				if serie.IsInLibrary {
+					str += "\n\nAlready in your library ✅"
+				}
+				sendImageMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, serie.CoverImage, serie.PrintSerieTitle(), getAddMediaKeyboard(1, len(foundSeries), mediaTypeSerie, !serie.IsInLibrary))
 			case userActionSerieDetails:
 				serieName := rcvMess.Text
 				log.Trace().Str("username", rcvMess.From.Username).Str("serieName", serieName).Msg("getting serie details")

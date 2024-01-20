@@ -217,8 +217,12 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		pageNb := cb.usersCurrPage[rcvCallback.From.ID]
 		films := (cb.usersData[rcvCallback.From.ID].([]radarr.Film))
 		film := films[pageNb-1]
-		keyboard := getAddMediaKeyboard(pageNb, len(films), mediaTypeMovie)
-		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, film.CoverImage, film.PrintMovieTitle(), &keyboard)
+		keyboard := getAddMediaKeyboard(pageNb, len(films), mediaTypeMovie, !film.IsInLibrary)
+		str := film.PrintMovieTitle()
+		if film.IsInLibrary {
+			str += "\n\nAlready in library ✅"
+		}
+		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, film.CoverImage, str, &keyboard)
 	case callbackPreviousAddMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing previous page of add media")
 
@@ -231,9 +235,13 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		pageNb := cb.usersCurrPage[rcvCallback.From.ID]
 		films := (cb.usersData[rcvCallback.From.ID].([]radarr.Film))
 		film := films[pageNb-1]
-		keyboard := getAddMediaKeyboard(pageNb, len(films), mediaTypeMovie)
-		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, film.CoverImage, film.PrintMovieTitle(), &keyboard)
-	case callbackEditRequestMovie:
+		keyboard := getAddMediaKeyboard(pageNb, len(films), mediaTypeMovie, !film.IsInLibrary)
+		str := film.PrintMovieTitle()
+		if film.IsInLibrary {
+			str += "\n\nAlready in library ✅"
+		}
+		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, film.CoverImage, str, &keyboard)
+	case callbackEditRequestAddMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("edit request movie")
 
 		// remove the last message
@@ -398,8 +406,12 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		pageNb := cb.usersCurrPage[rcvCallback.From.ID]
 		series := (cb.usersData[rcvCallback.From.ID].([]sonarr.Serie))
 		serie := series[pageNb-1]
-		keyboard := getAddMediaKeyboard(pageNb, len(series), mediaTypeSerie)
-		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, serie.CoverImage, serie.PrintSerieTitle(), &keyboard)
+		keyboard := getAddMediaKeyboard(pageNb, len(series), mediaTypeSerie, !serie.IsInLibrary)
+		str := serie.PrintSerieTitle()
+		if serie.IsInLibrary {
+			str += "\n\nAlready in library ✅"
+		}
+		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, serie.CoverImage, str, &keyboard)
 	case callbackPreviousAddSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing previous page of add media")
 
@@ -412,9 +424,13 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		pageNb := cb.usersCurrPage[rcvCallback.From.ID]
 		series := (cb.usersData[rcvCallback.From.ID].([]sonarr.Serie))
 		serie := series[pageNb-1]
-		keyboard := getAddMediaKeyboard(pageNb, len(series), mediaTypeSerie)
-		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, serie.CoverImage, serie.PrintSerieTitle(), &keyboard)
-	case callbackEditRequestSerie:
+		keyboard := getAddMediaKeyboard(pageNb, len(series), mediaTypeSerie, !serie.IsInLibrary)
+		str := serie.PrintSerieTitle()
+		if serie.IsInLibrary {
+			str += "\n\nAlready in library ✅"
+		}
+		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, serie.CoverImage, str, &keyboard)
+	case callbackEditRequestAddSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("edit request series")
 
 		// remove the last message

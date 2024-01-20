@@ -60,8 +60,8 @@ const (
 	callbackNextAddMovie callbackAction = "nextAddMovie"
 	// callbackPreviousAddMovie is the action to get the movie, from the list of movies to add.
 	callbackPreviousAddMovie callbackAction = "previousAddMovie"
-	// callbackEditRequestMovie is the action to edit the request of add a movie.
-	callbackEditRequestMovie callbackAction = "editRequestMovie"
+	// callbackEditRequestAddMovie is the action to edit the request of add a movie.
+	callbackEditRequestAddMovie callbackAction = "editRequestMovie"
 
 	// callbackNextSerie is the action to get the next page of the series list.
 	callbackNextSerie callbackAction = "nextSerie"
@@ -85,8 +85,8 @@ const (
 	callbackNextAddSerie callbackAction = "nextAddSerie"
 	// callbackPreviousAddSerie is the action to get the serie, from the list of series to add.
 	callbackPreviousAddSerie callbackAction = "previousAddSerie"
-	// callbackEditRequestSerie is the action to edit the request of add a serie.
-	callbackEditRequestSerie callbackAction = "editRequestSerie"
+	// callbackEditRequestAddSerie is the action to edit the request of add a serie.
+	callbackEditRequestAddSerie callbackAction = "editRequestSerie"
 
 	// callbackCancel is the action to cancel the current action.
 	callbackCancel callbackAction = "cancel"

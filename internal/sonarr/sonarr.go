@@ -13,6 +13,9 @@ type Serie struct {
 	TvdbId  int64
 	SerieId int64
 
+	// IsInLibrary is true if the serie is in the library.
+	IsInLibrary bool
+
 	// Title is the title of the serie.
 	Title string
 	// Year is the release year of the serie.
@@ -38,6 +41,8 @@ type Serie struct {
 	// Studio is the studio of the serie.
 	Studio string
 
+	// Downloaded is true if the serie is downloaded.
+	Downloaded bool
 	// Size is the size of the serie on disk GB.
 	Size float64
 }
@@ -194,6 +199,7 @@ func toSerieStruct(serie *sonarr.Series) Serie {
 	s := Serie{
 		TvdbId:            serie.TvdbID,
 		SerieId:           serie.ID,
+		IsInLibrary:       serie.ID > 0,
 		Title:             serie.Title,
 		Year:              serie.Year,
 		TotalSeasonsCount: serie.Statistics.SeasonCount,
@@ -201,6 +207,7 @@ func toSerieStruct(serie *sonarr.Series) Serie {
 		NumberOfVotes:     int(serie.Ratings.Votes),
 		Overview:          serie.Overview,
 		Genres:            serie.Genres,
+		Downloaded:        serie.Statistics.EpisodeFileCount > 0,
 		Size:              float64(serie.Statistics.SizeOnDisk) / 1024 / 1024 / 1024,
 	}
 
