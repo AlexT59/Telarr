@@ -37,7 +37,7 @@ type Updates struct {
 	// cb is the struct designed to handle the callbacks.
 	cb *callbacks
 
-	usersAction map[int]string
+	usersAction map[int]Action
 }
 
 func New(config configuration.Configuration) (*Updates, error) {
@@ -59,7 +59,7 @@ func New(config configuration.Configuration) (*Updates, error) {
 		},
 	)
 
-	usersAction := make(map[int]string)
+	usersAction := make(map[int]Action)
 	usersData := make(map[int]interface{})
 	usersCurrPage := make(map[int]int)
 

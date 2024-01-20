@@ -25,7 +25,7 @@ type messages struct {
 	sonarrConfig configuration.Sonarr
 
 	// list of users actions
-	usersAction map[int]string
+	usersAction map[int]Action
 	// list of data to navigate between pages
 	usersData     map[int]interface{}
 	usersCurrPage map[int]int
@@ -55,14 +55,14 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 			sendMoviesList(mess.bot, rcvMess, mess.radarrConfig)
 		case "addmovie":
 			log.Trace().Str("username", rcvMess.From.Username).Msg("adding movie")
-			mess.usersAction[rcvMess.From.ID] = "lookMovieToAdd"
+			mess.usersAction[rcvMess.From.ID] = userActionLookMovieToAdd
 
 			sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Please enter the name of the movie you want to add:")
 		case "series":
 			sendSeriesList(mess.bot, rcvMess, mess.sonarrConfig)
 		case "addserie":
 			log.Trace().Str("username", rcvMess.From.Username).Msg("adding serie")
-			mess.usersAction[rcvMess.From.ID] = "lookSerieToAdd"
+			mess.usersAction[rcvMess.From.ID] = userActionLookSerieToAdd
 
 			sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Please enter the name of the serie you want to add:")
 		case "stop":
@@ -81,7 +81,7 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 
 			switch action {
 			/* Movies */
-			case "lookMovieToAdd":
+			case userActionLookMovieToAdd:
 				movieName := rcvMess.Text
 				log.Trace().Str("username", rcvMess.From.Username).Str("movieName", movieName).Msg("looking for movie to add")
 
@@ -102,8 +102,8 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 
 				// send the first movie found
 				film := foundFilms[0]
-				sendImageMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, film.CoverImage, film.PrintMovieTitle(), getAddMediaKeyboard(1, len(foundFilms), mediaTypeMovies))
-			case "movieDetails":
+				sendImageMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, film.CoverImage, film.PrintMovieTitle(), getAddMediaKeyboard(1, len(foundFilms), mediaTypeMovie))
+			case userActionMovieDetails:
 				movieName := rcvMess.Text
 				log.Trace().Str("username", rcvMess.From.Username).Str("movieName", movieName).Msg("getting movie details")
 
@@ -124,7 +124,7 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 				log.Trace().Str("username", rcvMess.From.Username).Str("movieName", film.Title).Msg("sending movie details")
 				sendImageMessage(mess.bot, rcvMess.Chat.ID, film.CoverImage, film.PrintMovieTitle())
 				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, film.PrintMovieDetails(), telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{telegram.NewInlineKeyboardButton("<< Back to movies list", "backToMoviesList")}))
-			case "removeMovie":
+			case userActionRemoveMovie:
 				movieName := rcvMess.Text
 				log.Trace().Str("username", rcvMess.From.Username).Str("movieName", movieName).Msg("getting movie to remove")
 
@@ -144,10 +144,10 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 				str := film.PrintMovieTitle()
 				str += "\n_MovieId: " + strconv.Itoa(int(film.MovieId)) + "_"
 				str += "\n\nAre you sure you want to remove this movie from your library?"
-				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, str, getConfirmRemoveKeyboard(mediaTypeMovies))
+				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, str, getConfirmRemoveKeyboard(mediaTypeMovie))
 
 				/* Series */
-			case "lookSerieToAdd":
+			case userActionLookSerieToAdd:
 				serieName := rcvMess.Text
 				log.Trace().Str("username", rcvMess.From.Username).Str("serieName", serieName).Msg("looking for serie to add")
 
@@ -168,8 +168,8 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 
 				// send the first serie found
 				serie := foundSeries[0]
-				sendImageMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, serie.CoverImage, serie.PrintSerieTitle(), getAddMediaKeyboard(1, len(foundSeries), mediaTypeSeries))
-			case "serieDetails":
+				sendImageMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, serie.CoverImage, serie.PrintSerieTitle(), getAddMediaKeyboard(1, len(foundSeries), mediaTypeSerie))
+			case userActionSerieDetails:
 				serieName := rcvMess.Text
 				log.Trace().Str("username", rcvMess.From.Username).Str("serieName", serieName).Msg("getting serie details")
 
@@ -190,7 +190,7 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 				log.Trace().Str("username", rcvMess.From.Username).Str("serieName", serie.Title).Msg("sending serie details")
 				sendImageMessage(mess.bot, rcvMess.Chat.ID, serie.CoverImage, serie.PrintSerieTitle())
 				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, serie.PrintSerieDetails(), telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{telegram.NewInlineKeyboardButton("<< Back to series list", "backToSeriesList")}))
-			case "removeSerie":
+			case userActionRemoveSerie:
 				serieName := rcvMess.Text
 				log.Trace().Str("username", rcvMess.From.Username).Str("serieName", serieName).Msg("getting serie to remove")
 
@@ -210,9 +210,9 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 				str := serie.PrintSerieTitle()
 				str += "\n_SerieId: " + strconv.Itoa(int(serie.SerieId)) + "_"
 				str += "\n\nAre you sure you want to remove this serie from your library?"
-				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, str, getConfirmRemoveKeyboard(mediaTypeSeries))
+				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, str, getConfirmRemoveKeyboard(mediaTypeSerie))
 			default:
-				log.Warn().Str("username", rcvMess.From.Username).Str("action", action).Msg("unknown action")
+				log.Warn().Str("username", rcvMess.From.Username).Str("action", action.String()).Msg("unknown action")
 			}
 		} else {
 			log.Trace().Str("username", rcvMess.From.Username).Msg("unknown message")
@@ -236,7 +236,7 @@ func sendMoviesList(bot *telegram.Bot, rcvMess *telegram.Message, radarrConfig c
 
 	// send the movies list
 	log.Trace().Str("username", rcvMess.From.Username).Msg("sending movies list")
-	keyboard := getMediaListKeyboard(1, len(messages), mediaTypeMovies)
+	keyboard := getMediaListKeyboard(1, len(messages), mediaTypeMovie)
 	sendMessageWithKeyboard(bot, rcvMess.Chat.ID, messages[0]+printPageNum(1, len(messages)), keyboard)
 }
 
@@ -253,6 +253,6 @@ func sendSeriesList(bot *telegram.Bot, rcvMess *telegram.Message, sonarrConfig c
 
 	// send the series list
 	log.Trace().Str("username", rcvMess.From.Username).Msg("sending series list")
-	keyboard := getMediaListKeyboard(1, len(messages), mediaTypeSeries)
+	keyboard := getMediaListKeyboard(1, len(messages), mediaTypeSerie)
 	sendMessageWithKeyboard(bot, rcvMess.Chat.ID, messages[0]+printPageNum(1, len(messages)), keyboard)
 }
