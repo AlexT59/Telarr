@@ -7,6 +7,7 @@ import (
 	"telarr/configuration"
 	"telarr/internal/radarr"
 	"telarr/internal/sonarr"
+	"telarr/internal/types"
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/toby3d/telegram"
@@ -21,7 +22,7 @@ type callbacks struct {
 	sonarrConfig configuration.Sonarr
 
 	// list of users actions
-	usersAction map[int]Action
+	usersAction map[int]types.Action
 	// list of data to navigate between pages
 	usersData     map[int]interface{}
 	usersCurrPage map[int]int
@@ -61,11 +62,11 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		messages = printSeriesList(series)
 	}
 
-	callback := callbackAction(rcvCallback.Data)
+	callback := types.CallbackAction(rcvCallback.Data)
 	switch callback {
 	/* Movies */
 	// get the next page of the movies list
-	case callbackNextMovie:
+	case types.CallbackNextMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing next page of movies list")
 
 		// get the current page and the total number of pages
@@ -78,7 +79,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		keyboard := getMediaListKeyboard(pageNb+1, totalPages, mediaTypeMovie)
 		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, messages[pageNb+1-1]+printPageNum(pageNb+1, len(messages)), &keyboard)
 	// get the previous page of the movies list
-	case callbackPreviousMovie:
+	case types.CallbackPreviousMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing previous page of movies list")
 
 		// get the current page and the total number of pages
@@ -91,18 +92,18 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		keyboard := getMediaListKeyboard(pageNb-1, totalPages, mediaTypeMovie)
 		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, messages[pageNb-1-1]+printPageNum(pageNb-1, len(messages)), &keyboard)
 	// get the first page of the movies list
-	case callbackFirstMovie:
+	case types.CallbackFirstMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing first page of movies list")
 
 		keyboard := getMediaListKeyboard(1, len(messages), mediaTypeMovie)
 		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, messages[0]+printPageNum(1, len(messages)), &keyboard)
 	// get the last page of the movies list
-	case callbackLastMovie:
+	case types.CallbackLastMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing last page of movies list")
 
 		keyboard := getMediaListKeyboard(len(messages), len(messages), mediaTypeMovie)
 		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, messages[len(messages)-1]+printPageNum(len(messages), len(messages)), &keyboard)
-	case callbackMovieDetails:
+	case types.CallbackMovieDetails:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing movie details")
 
 		// show the movies list into a keyboard
@@ -124,9 +125,9 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		}
 		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the movie or write his name it", keyboard)
 		if sent {
-			cb.usersAction[rcvCallback.From.ID] = callbackMovieDetails
+			cb.usersAction[rcvCallback.From.ID] = types.CallbackMovieDetails
 		}
-	case callbackBackToMoviesList:
+	case types.CallbackBackToMoviesList:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("back to movies list")
 
 		// remove the two last messages
@@ -135,7 +136,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 
 		// show the movies list
 		sendMoviesList(cb.bot, rcvCallback.Message, cb.radarrConfig)
-	case callbackRemoveMovie:
+	case types.CallbackRemoveMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("show movies list to remove")
 
 		// show the movies list into a keyboard
@@ -157,9 +158,9 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		}
 		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the movie or write his name it", keyboard)
 		if sent {
-			cb.usersAction[rcvCallback.From.ID] = callbackRemoveMovie
+			cb.usersAction[rcvCallback.From.ID] = types.CallbackRemoveMovie
 		}
-	case callbackConfirmRemoveMovie:
+	case types.CallbackConfirmRemoveMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("confirm remove movie")
 
 		// remove the last message
@@ -198,14 +199,14 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		log.Debug().Str("movieName", movieName).Str("username", rcvCallback.From.Username).Msg("movie removed successfully")
 
 		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Movie *"+movieName+"* removed successfully! ✅")
-	case callbackCancelRemoveMovie:
+	case types.CallbackCancelRemoveMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("cancel remove movie")
 
 		// remove the last message
 		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
 
 		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Movie not removed! ✅")
-	case callbackNextAddMovie:
+	case types.CallbackNextAddMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing next page of add media")
 
 		ok := checkUserAction(cb, rcvCallback.From, rcvCallback.Message)
@@ -223,7 +224,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 			str += "\n\nAlready in library ✅"
 		}
 		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, film.CoverImage, str, &keyboard)
-	case callbackPreviousAddMovie:
+	case types.CallbackPreviousAddMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing previous page of add media")
 
 		ok := checkUserAction(cb, rcvCallback.From, rcvCallback.Message)
@@ -241,12 +242,12 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 			str += "\n\nAlready in library ✅"
 		}
 		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, film.CoverImage, str, &keyboard)
-	case callbackEditRequestAddMovie:
+	case types.CallbackEditRequestAddMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("edit request movie")
 
 		// remove the last message
 		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
-		cb.usersAction[rcvCallback.From.ID] = userActionLookMovieToAdd
+		cb.usersAction[rcvCallback.From.ID] = types.UserActionLookMovieToAdd
 		delete(cb.usersData, rcvCallback.From.ID)
 		delete(cb.usersCurrPage, rcvCallback.From.ID)
 
@@ -254,7 +255,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 
 		/* Series */
 	// get the next page of the series list
-	case callbackNextSerie:
+	case types.CallbackNextSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing next page of series list")
 
 		// get the current page and the total number of pages
@@ -267,7 +268,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		keyboard := getMediaListKeyboard(pageNb+1, totalPages, mediaTypeSerie)
 		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, messages[pageNb+1-1]+printPageNum(pageNb+1, len(messages)), &keyboard)
 	// get the previous page of the series list
-	case callbackPreviousSerie:
+	case types.CallbackPreviousSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing previous page of series list")
 
 		// get the current page and the total number of pages
@@ -280,18 +281,18 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		keyboard := getMediaListKeyboard(pageNb-1, totalPages, mediaTypeSerie)
 		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, messages[pageNb-1-1]+printPageNum(pageNb-1, len(messages)), &keyboard)
 	// get the first page of the series list
-	case callbackFirstSerie:
+	case types.CallbackFirstSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing first page of series list")
 
 		keyboard := getMediaListKeyboard(1, len(messages), mediaTypeSerie)
 		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, messages[0]+printPageNum(1, len(messages)), &keyboard)
 	// get the last page of the series list
-	case callbackLastSerie:
+	case types.CallbackLastSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing last page of series list")
 
 		keyboard := getMediaListKeyboard(len(messages), len(messages), mediaTypeSerie)
 		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, messages[len(messages)-1]+printPageNum(len(messages), len(messages)), &keyboard)
-	case callbackSerieDetails:
+	case types.CallbackSerieDetails:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing serie details")
 
 		// show the series list into a keyboard
@@ -313,9 +314,9 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		}
 		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the serie or write his name it", keyboard)
 		if sent {
-			cb.usersAction[rcvCallback.From.ID] = callbackSerieDetails
+			cb.usersAction[rcvCallback.From.ID] = types.CallbackSerieDetails
 		}
-	case callbackBackToSeriesList:
+	case types.CallbackBackToSeriesList:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("back to series list")
 
 		// remove the two last messages
@@ -324,7 +325,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 
 		// show the series list
 		sendSeriesList(cb.bot, rcvCallback.Message, cb.sonarrConfig)
-	case callbackRemoveSerie:
+	case types.CallbackRemoveSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("show series list to remove")
 
 		// show the series list into a keyboard
@@ -346,9 +347,9 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		}
 		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the serie or write his name it", keyboard)
 		if sent {
-			cb.usersAction[rcvCallback.From.ID] = callbackRemoveSerie
+			cb.usersAction[rcvCallback.From.ID] = types.CallbackRemoveSerie
 		}
-	case callbackConfirmRemoveSerie:
+	case types.CallbackConfirmRemoveSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("confirm remove serie")
 
 		// remove the last message
@@ -387,14 +388,14 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		log.Debug().Str("serieName", serieName).Str("username", rcvCallback.From.Username).Msg("serie removed successfully")
 
 		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Serie *"+serieName+"* removed successfully! ✅")
-	case callbackCancelRemoveSerie:
+	case types.CallbackCancelRemoveSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("cancel remove serie")
 
 		// remove the last message
 		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
 
 		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Serie not removed! ✅")
-	case callbackNextAddSerie:
+	case types.CallbackNextAddSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing next page of add media")
 
 		ok := checkUserAction(cb, rcvCallback.From, rcvCallback.Message)
@@ -412,7 +413,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 			str += "\n\nAlready in library ✅"
 		}
 		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, serie.CoverImage, str, &keyboard)
-	case callbackPreviousAddSerie:
+	case types.CallbackPreviousAddSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing previous page of add media")
 
 		ok := checkUserAction(cb, rcvCallback.From, rcvCallback.Message)
@@ -430,19 +431,19 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 			str += "\n\nAlready in library ✅"
 		}
 		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, serie.CoverImage, str, &keyboard)
-	case callbackEditRequestAddSerie:
+	case types.CallbackEditRequestAddSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("edit request series")
 
 		// remove the last message
 		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
-		cb.usersAction[rcvCallback.From.ID] = userActionLookSerieToAdd
+		cb.usersAction[rcvCallback.From.ID] = types.UserActionLookSerieToAdd
 		delete(cb.usersData, rcvCallback.From.ID)
 		delete(cb.usersCurrPage, rcvCallback.From.ID)
 
 		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Please enter the name of the serie you want to add:")
 
 	/* Common */
-	case callbackCancel:
+	case types.CallbackCancel:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("canceling action")
 
 		// remove the last message

@@ -8,6 +8,7 @@ import (
 	"telarr/internal/authentication"
 	"telarr/internal/radarr"
 	"telarr/internal/sonarr"
+	"telarr/internal/types"
 
 	"github.com/rs/zerolog/log"
 	"github.com/valyala/fasthttp"
@@ -37,7 +38,7 @@ type Updates struct {
 	// cb is the struct designed to handle the callbacks.
 	cb *callbacks
 
-	usersAction map[int]Action
+	usersAction map[int]types.Action
 }
 
 func New(config configuration.Configuration) (*Updates, error) {
@@ -59,7 +60,7 @@ func New(config configuration.Configuration) (*Updates, error) {
 		},
 	)
 
-	usersAction := make(map[int]Action)
+	usersAction := make(map[int]types.Action)
 	usersData := make(map[int]interface{})
 	usersCurrPage := make(map[int]int)
 

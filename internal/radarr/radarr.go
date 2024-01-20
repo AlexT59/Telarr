@@ -47,6 +47,19 @@ type Film struct {
 	Size float64
 }
 
+func GetStatus(config configuration.Radarr) (string, error) {
+	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for status")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := radarr.New(c)
+
+	status, err := r.GetSystemStatus()
+	if err != nil {
+		return "", err
+	}
+
+	return status.Version, nil
+}
+
 // GetFilmsList returns the list of films in the library.
 func GetFilmsList(config configuration.Radarr) ([]Film, error) {
 	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for movie list")

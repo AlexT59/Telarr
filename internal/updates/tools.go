@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"telarr/internal/types"
 
 	"gitlab.com/toby3d/telegram"
 )
@@ -43,13 +44,13 @@ func getMediaListKeyboard(pageNb int, totalPages int, mediaType mediaType) teleg
 	keyboard := getNavigationKeyboard(pageNb, totalPages, mediaType)
 	if mediaType == mediaTypeMovie {
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("ℹ️ Show movie details", callbackMovieDetails.String())),
-			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("🗑 Remove movie", callbackRemoveMovie.String())),
+			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("ℹ️ Show movie details", types.CallbackMovieDetails.String())),
+			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("🗑 Remove movie", types.CallbackRemoveMovie.String())),
 		)
 	} else if mediaType == mediaTypeSerie {
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("ℹ️ Show serie details", callbackSerieDetails.String())),
-			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("🗑 Remove serie", callbackRemoveSerie.String())),
+			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("ℹ️ Show serie details", types.CallbackSerieDetails.String())),
+			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("🗑 Remove serie", types.CallbackRemoveSerie.String())),
 		)
 	}
 	return keyboard
@@ -65,42 +66,42 @@ func getNavigationKeyboard(pageNb int, totalPages int, mediaType mediaType) tele
 
 	if mediaType == mediaTypeMovie {
 		if pageNb == 1 {
-			row = append(row, telegram.NewInlineKeyboardButton("Next ->", callbackNextMovie.String()))
+			row = append(row, telegram.NewInlineKeyboardButton("Next ->", types.CallbackNextMovie.String()))
 			if totalPages > 2 {
-				row = append(row, telegram.NewInlineKeyboardButton(">>", callbackLastMovie.String()))
+				row = append(row, telegram.NewInlineKeyboardButton(">>", types.CallbackLastMovie.String()))
 			}
 		} else if pageNb == totalPages {
 			if totalPages > 2 {
-				row = append(row, telegram.NewInlineKeyboardButton("<<", callbackFirstMovie.String()))
+				row = append(row, telegram.NewInlineKeyboardButton("<<", types.CallbackFirstMovie.String()))
 			}
-			row = append(row, telegram.NewInlineKeyboardButton("<- Previous", callbackPreviousMovie.String()))
+			row = append(row, telegram.NewInlineKeyboardButton("<- Previous", types.CallbackPreviousMovie.String()))
 		} else {
 			if totalPages > 2 && pageNb > 2 {
-				row = append(row, telegram.NewInlineKeyboardButton("<<", callbackFirstMovie.String()))
+				row = append(row, telegram.NewInlineKeyboardButton("<<", types.CallbackFirstMovie.String()))
 			}
-			row = append(row, telegram.NewInlineKeyboardButton("<- Previous", callbackPreviousMovie.String()), telegram.NewInlineKeyboardButton("Next ->", callbackNextMovie.String()))
+			row = append(row, telegram.NewInlineKeyboardButton("<- Previous", types.CallbackPreviousMovie.String()), telegram.NewInlineKeyboardButton("Next ->", types.CallbackNextMovie.String()))
 			if totalPages > 2 && pageNb < totalPages-1 {
-				row = append(row, telegram.NewInlineKeyboardButton(">>", callbackLastMovie.String()))
+				row = append(row, telegram.NewInlineKeyboardButton(">>", types.CallbackLastMovie.String()))
 			}
 		}
 	} else if mediaType == mediaTypeSerie {
 		if pageNb == 1 {
-			row = append(row, telegram.NewInlineKeyboardButton("Next ->", callbackNextSerie.String()))
+			row = append(row, telegram.NewInlineKeyboardButton("Next ->", types.CallbackNextSerie.String()))
 			if totalPages > 2 {
-				row = append(row, telegram.NewInlineKeyboardButton(">>", callbackLastSerie.String()))
+				row = append(row, telegram.NewInlineKeyboardButton(">>", types.CallbackLastSerie.String()))
 			}
 		} else if pageNb == totalPages {
 			if totalPages > 2 {
-				row = append(row, telegram.NewInlineKeyboardButton("<<", callbackFirstSerie.String()))
+				row = append(row, telegram.NewInlineKeyboardButton("<<", types.CallbackFirstSerie.String()))
 			}
-			row = append(row, telegram.NewInlineKeyboardButton("<- Previous", callbackPreviousSerie.String()))
+			row = append(row, telegram.NewInlineKeyboardButton("<- Previous", types.CallbackPreviousSerie.String()))
 		} else {
 			if totalPages > 2 && pageNb > 2 {
-				row = append(row, telegram.NewInlineKeyboardButton("<<", callbackFirstSerie.String()))
+				row = append(row, telegram.NewInlineKeyboardButton("<<", types.CallbackFirstSerie.String()))
 			}
-			row = append(row, telegram.NewInlineKeyboardButton("<- Previous", callbackPreviousSerie.String()), telegram.NewInlineKeyboardButton("Next ->", callbackNextSerie.String()))
+			row = append(row, telegram.NewInlineKeyboardButton("<- Previous", types.CallbackPreviousSerie.String()), telegram.NewInlineKeyboardButton("Next ->", types.CallbackNextSerie.String()))
 			if totalPages > 2 && pageNb < totalPages-1 {
-				row = append(row, telegram.NewInlineKeyboardButton(">>", callbackLastSerie.String()))
+				row = append(row, telegram.NewInlineKeyboardButton(">>", types.CallbackLastSerie.String()))
 			}
 		}
 	}
@@ -111,11 +112,11 @@ func getNavigationKeyboard(pageNb int, totalPages int, mediaType mediaType) tele
 func getConfirmRemoveKeyboard(mediaType mediaType) telegram.InlineKeyboardMarkup {
 	if mediaType == mediaTypeMovie {
 		return telegram.NewInlineKeyboardMarkup(
-			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("Confirm ✅", callbackConfirmRemoveMovie.String()), telegram.NewInlineKeyboardButton("Cancel ❌", callbackCancelRemoveMovie.String())),
+			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("Confirm ✅", types.CallbackConfirmRemoveMovie.String()), telegram.NewInlineKeyboardButton("Cancel ❌", types.CallbackCancelRemoveMovie.String())),
 		)
 	} else if mediaType == mediaTypeSerie {
 		return telegram.NewInlineKeyboardMarkup(
-			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("Confirm ✅", callbackConfirmRemoveSerie.String()), telegram.NewInlineKeyboardButton("Cancel ❌", callbackCancelRemoveSerie.String())),
+			telegram.NewInlineKeyboardRow(telegram.NewInlineKeyboardButton("Confirm ✅", types.CallbackConfirmRemoveSerie.String()), telegram.NewInlineKeyboardButton("Cancel ❌", types.CallbackCancelRemoveSerie.String())),
 		)
 	}
 
@@ -125,21 +126,21 @@ func getConfirmRemoveKeyboard(mediaType mediaType) telegram.InlineKeyboardMarkup
 func getAddMediaKeyboard(pageNb int, totalPages int, mediaType mediaType, addable bool) telegram.InlineKeyboardMarkup {
 	var addRow []*telegram.InlineKeyboardButton
 	if mediaType == mediaTypeMovie {
-		addRow = append(addRow, telegram.NewInlineKeyboardButton("Add to Radarr 🎬", callbackNextAddMovie.String()))
+		addRow = append(addRow, telegram.NewInlineKeyboardButton("Add to Radarr 🎬", types.CallbackAddMovie.String()))
 	} else if mediaType == mediaTypeSerie {
-		addRow = append(addRow, telegram.NewInlineKeyboardButton("Add to Sonarr 📺", callbackNextAddSerie.String()))
+		addRow = append(addRow, telegram.NewInlineKeyboardButton("Add to Sonarr 📺", types.CallbackAddSerie.String()))
 	}
 
 	var editRow []*telegram.InlineKeyboardButton
 	if mediaType == mediaTypeMovie {
 		editRow = []*telegram.InlineKeyboardButton{
-			telegram.NewInlineKeyboardButton("Edit request 🔍", callbackEditRequestAddMovie.String()),
-			telegram.NewInlineKeyboardButton("Cancel ❌", callbackCancel.String()),
+			telegram.NewInlineKeyboardButton("Edit request 🔍", types.CallbackEditRequestAddMovie.String()),
+			telegram.NewInlineKeyboardButton("Cancel ❌", types.CallbackCancel.String()),
 		}
 	} else if mediaType == mediaTypeSerie {
 		editRow = []*telegram.InlineKeyboardButton{
-			telegram.NewInlineKeyboardButton("Edit request 🔍", callbackEditRequestAddSerie.String()),
-			telegram.NewInlineKeyboardButton("Cancel ❌", callbackCancel.String()),
+			telegram.NewInlineKeyboardButton("Edit request 🔍", types.CallbackEditRequestAddSerie.String()),
+			telegram.NewInlineKeyboardButton("Cancel ❌", types.CallbackCancel.String()),
 		}
 	}
 
@@ -154,19 +155,19 @@ func getAddMediaKeyboard(pageNb int, totalPages int, mediaType mediaType, addabl
 
 	if mediaType == mediaTypeMovie {
 		if pageNb == 1 {
-			navRow = append(navRow, telegram.NewInlineKeyboardButton("Next ->", callbackNextAddMovie.String()))
+			navRow = append(navRow, telegram.NewInlineKeyboardButton("Next ->", types.CallbackNextAddMovie.String()))
 		} else if pageNb == totalPages {
-			navRow = append(navRow, telegram.NewInlineKeyboardButton("<- Previous", callbackPreviousAddMovie.String()))
+			navRow = append(navRow, telegram.NewInlineKeyboardButton("<- Previous", types.CallbackPreviousAddMovie.String()))
 		} else {
-			navRow = append(navRow, telegram.NewInlineKeyboardButton("<- Previous", callbackPreviousAddMovie.String()), telegram.NewInlineKeyboardButton("Next ->", callbackNextAddMovie.String()))
+			navRow = append(navRow, telegram.NewInlineKeyboardButton("<- Previous", types.CallbackPreviousAddMovie.String()), telegram.NewInlineKeyboardButton("Next ->", types.CallbackNextAddMovie.String()))
 		}
 	} else if mediaType == mediaTypeSerie {
 		if pageNb == 1 {
-			navRow = append(navRow, telegram.NewInlineKeyboardButton("Next ->", callbackNextAddSerie.String()))
+			navRow = append(navRow, telegram.NewInlineKeyboardButton("Next ->", types.CallbackNextAddSerie.String()))
 		} else if pageNb == totalPages {
-			navRow = append(navRow, telegram.NewInlineKeyboardButton("<- Previous", callbackPreviousAddSerie.String()))
+			navRow = append(navRow, telegram.NewInlineKeyboardButton("<- Previous", types.CallbackPreviousAddSerie.String()))
 		} else {
-			navRow = append(navRow, telegram.NewInlineKeyboardButton("<- Previous", callbackPreviousAddSerie.String()), telegram.NewInlineKeyboardButton("Next ->", callbackNextAddSerie.String()))
+			navRow = append(navRow, telegram.NewInlineKeyboardButton("<- Previous", types.CallbackPreviousAddSerie.String()), telegram.NewInlineKeyboardButton("Next ->", types.CallbackNextAddSerie.String()))
 		}
 	}
 
