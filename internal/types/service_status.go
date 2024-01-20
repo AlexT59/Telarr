@@ -6,10 +6,18 @@ type ServiceStatus struct {
 	// Version is the version of the service.
 	Version string
 
-	// Mode is the mode of the service.
-	Mode string
+	// Running is true if the service is running.
+	Running bool
 }
 
 func (s ServiceStatus) String() string {
-	return s.Name + " _" + s.Version + "_ (" + s.Mode + ")"
+	str := "*" + s.Name + "* _v" + s.Version + "_"
+
+	if s.Running {
+		str += " (running  ✅)"
+	} else {
+		str += " (not running  ❌)"
+	}
+
+	return str
 }

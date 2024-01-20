@@ -66,6 +66,13 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 			mess.usersAction[rcvMess.From.ID] = types.UserActionLookSerieToAdd
 
 			sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Please enter the name of the serie you want to add:")
+		case "status":
+			log.Trace().Str("username", rcvMess.From.Username).Msg("getting status")
+
+			radarrStatus := radarr.GetStatus(mess.radarrConfig)
+			sonarrStatus := sonarr.GetStatus(mess.sonarrConfig)
+
+			sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, radarrStatus.String()+"\n\n"+sonarrStatus.String(), telegram.NewReplyKeyboardRemove(false))
 		case "stop":
 			log.Trace().Str("username", rcvMess.From.Username).Msg("canceling action")
 			sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, "Action canceled ✅", telegram.NewReplyKeyboardRemove(false))

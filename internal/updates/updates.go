@@ -362,7 +362,8 @@ func printHelp() string {
 
 	// commands
 	str += "\n🔧 *Commands*\n"
-	str += "/stop - 🛑 Cancel the current action"
+	str += "/stop - 🛑 Cancel the current action\n"
+	str += "/status - 📊 Show the status of the server\n"
 
 	return str
 }

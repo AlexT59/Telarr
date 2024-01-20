@@ -3,6 +3,7 @@ package sonarr
 import (
 	"strconv"
 	"telarr/configuration"
+	"telarr/internal/types"
 
 	"github.com/rs/zerolog/log"
 	"golift.io/starr"
@@ -55,6 +56,27 @@ type Season struct {
 	DownloadedEpisodes int
 	// TotalEpisodes is the total number of episodes.
 	TotalEpisodes int
+}
+
+func GetStatus(config configuration.Sonarr) types.ServiceStatus {
+	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for status")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := sonarr.New(c)
+
+	status, err := r.GetSystemStatus()
+	if err != nil {
+		return types.ServiceStatus{
+			Name:    "Sonarr",
+			Version: "unknown",
+			Running: false,
+		}
+	}
+
+	return types.ServiceStatus{
+		Name:    status.AppName,
+		Version: status.Version,
+		Running: true,
+	}
 }
 
 // GetSeriesList returns the list of series in the library.

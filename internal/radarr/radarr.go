@@ -3,6 +3,7 @@ package radarr
 import (
 	"strconv"
 	"telarr/configuration"
+	"telarr/internal/types"
 
 	"github.com/rs/zerolog/log"
 	"golift.io/starr"
@@ -47,17 +48,25 @@ type Film struct {
 	Size float64
 }
 
-func GetStatus(config configuration.Radarr) (string, error) {
+func GetStatus(config configuration.Radarr) types.ServiceStatus {
 	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for status")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
 	r := radarr.New(c)
 
 	status, err := r.GetSystemStatus()
 	if err != nil {
-		return "", err
+		return types.ServiceStatus{
+			Name:    "Radarr",
+			Version: "unknown",
+			Running: false,
+		}
 	}
 
-	return status.Version, nil
+	return types.ServiceStatus{
+		Name:    status.AppName,
+		Version: status.Version,
+		Running: true,
+	}
 }
 
 // GetFilmsList returns the list of films in the library.
