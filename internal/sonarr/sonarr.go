@@ -52,6 +52,7 @@ type Season struct {
 	TotalEpisodes int
 }
 
+// GetSeriesList returns the list of series in the library.
 func GetSeriesList(config configuration.Sonarr) ([]Serie, error) {
 	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for series list")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
@@ -72,6 +73,7 @@ func GetSeriesList(config configuration.Sonarr) ([]Serie, error) {
 	return seriesList, nil
 }
 
+// GetSerieDetails returns the details of a serie in the library from its name.
 func GetSerieDetails(config configuration.Sonarr, serieName string) ([]Serie, error) {
 	log.Trace().Str("serieName", serieName).Str("endpoint", config.Endpoint).Msg("contacting radarr for serie details")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
@@ -101,6 +103,7 @@ func GetSerieDetails(config configuration.Sonarr, serieName string) ([]Serie, er
 	return seriesList, nil
 }
 
+// GetSerieName returns the name of a serie in the library from its id.
 func GetSerieName(config configuration.Sonarr, serieId int) (string, error) {
 	log.Trace().Int("serieId", serieId).Str("endpoint", config.Endpoint).Msg("contacting radarr for serie name")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
@@ -114,6 +117,7 @@ func GetSerieName(config configuration.Sonarr, serieId int) (string, error) {
 	return serie.Title, nil
 }
 
+// RemoveSerie removes a serie from the library.
 func RemoveSerie(config configuration.Sonarr, serieId int) error {
 	log.Trace().Int("serieId", serieId).Str("endpoint", config.Endpoint).Msg("contacting radarr to remove serie")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
@@ -125,6 +129,26 @@ func RemoveSerie(config configuration.Sonarr, serieId int) error {
 	}
 
 	return nil
+}
+
+func LookupSerie(config configuration.Sonarr, serieName string) ([]Serie, error) {
+	log.Trace().Str("serieName", serieName).Str("endpoint", config.Endpoint).Msg("contacting radarr for serie details")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := sonarr.New(c)
+
+	series, err := r.Lookup(serieName)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert the series to the Serie struct
+	var seriesList []Serie
+	for _, serie := range series {
+		s := toSerieStruct(serie)
+		seriesList = append(seriesList, s)
+	}
+
+	return seriesList, nil
 }
 
 /* Serie */

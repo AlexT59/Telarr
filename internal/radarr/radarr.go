@@ -44,6 +44,7 @@ type Film struct {
 	Size float64
 }
 
+// GetFilmsList returns the list of films in the library.
 func GetFilmsList(config configuration.Radarr) ([]Film, error) {
 	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for movie list")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
@@ -63,6 +64,7 @@ func GetFilmsList(config configuration.Radarr) ([]Film, error) {
 	return filmsList, nil
 }
 
+// GetFilmDetails returns the details of a film in the library from its name.
 func GetFilmDetails(config configuration.Radarr, movieName string) ([]Film, error) {
 	log.Trace().Str("movieName", movieName).Str("endpoint", config.Endpoint).Msg("contacting radarr for movie details")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
@@ -92,6 +94,7 @@ func GetFilmDetails(config configuration.Radarr, movieName string) ([]Film, erro
 	return filmsList, nil
 }
 
+// GetMovieName returns the name of a movie in the library from its id.
 func GetMovieName(config configuration.Radarr, movieId int) (string, error) {
 	log.Trace().Int("movieId", movieId).Str("endpoint", config.Endpoint).Msg("contacting radarr for movie name")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
@@ -105,6 +108,7 @@ func GetMovieName(config configuration.Radarr, movieId int) (string, error) {
 	return movie.Title, nil
 }
 
+// RemoveFilm removes a film from the library.
 func RemoveFilm(config configuration.Radarr, movieId int) error {
 	log.Trace().Int("movieId", movieId).Str("endpoint", config.Endpoint).Msg("contacting radarr	to remove movie")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
@@ -116,6 +120,26 @@ func RemoveFilm(config configuration.Radarr, movieId int) error {
 	}
 
 	return nil
+}
+
+// LookupFilm looks for a film in radarr.
+func LookupFilm(config configuration.Radarr, movieName string) ([]Film, error) {
+	log.Trace().Str("movieName", movieName).Str("endpoint", config.Endpoint).Msg("contacting radarr for movie lookup")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := radarr.New(c)
+
+	films, err := r.Lookup(movieName)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert the films to the Film struct
+	var filmsList []Film
+	for _, film := range films {
+		filmsList = append(filmsList, toFilmStruct(film))
+	}
+
+	return filmsList, nil
 }
 
 /* Film */

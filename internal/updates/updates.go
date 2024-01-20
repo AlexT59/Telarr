@@ -60,6 +60,8 @@ func New(config configuration.Configuration) (*Updates, error) {
 	)
 
 	usersAction := make(map[int]string)
+	usersData := make(map[int]interface{})
+	usersCurrPage := make(map[int]int)
 
 	return &Updates{
 		config:      config,
@@ -68,16 +70,20 @@ func New(config configuration.Configuration) (*Updates, error) {
 		wg:          &sync.WaitGroup{},
 		usersAction: usersAction,
 		mess: &messages{
-			bot:          bot,
-			radarrConfig: config.Radarr,
-			sonarrConfig: config.Sonarr,
-			usersAction:  usersAction,
+			bot:           bot,
+			radarrConfig:  config.Radarr,
+			sonarrConfig:  config.Sonarr,
+			usersAction:   usersAction,
+			usersData:     usersData,
+			usersCurrPage: usersCurrPage,
 		},
 		cb: &callbacks{
-			bot:          bot,
-			radarrConfig: config.Radarr,
-			sonarrConfig: config.Sonarr,
-			usersAction:  usersAction,
+			bot:           bot,
+			radarrConfig:  config.Radarr,
+			sonarrConfig:  config.Sonarr,
+			usersAction:   usersAction,
+			usersData:     usersData,
+			usersCurrPage: usersCurrPage,
 		},
 	}, nil
 }
@@ -254,6 +260,29 @@ func sendImageMessage(bot *telegram.Bot, chatID int64, imageUrl string, caption 
 	return true
 }
 
+func sendImageMessageWithKeyboard(bot *telegram.Bot, chatID int64, imageUrl string, caption string, keyboard telegram.ReplyMarkup) bool {
+	u := fasthttp.AcquireURI()
+	defer fasthttp.ReleaseURI(u)
+	u.Update(imageUrl)
+
+	if len(caption) > 200 {
+		caption = caption[:200-3] + "..."
+	}
+
+	_, err := bot.SendPhoto(telegram.SendPhoto{
+		ChatID:      chatID,
+		Photo:       &telegram.InputFile{URI: u},
+		Caption:     caption,
+		ParseMode:   telegram.ParseModeMarkdown,
+		ReplyMarkup: keyboard,
+	})
+	if err != nil {
+		log.Err(err).Msg("error when sending image message")
+		return false
+	}
+	return true
+}
+
 // Editing messages
 
 // editMessage edits a message and returns true if the message was edited successfully.
@@ -286,6 +315,33 @@ func editMessageWithKeyboard(bot *telegram.Bot, chatID int64, messageID int, tex
 		Text:        text,
 		ReplyMarkup: keyboard,
 	})
+}
+
+func editImageMessageWithKeyboard(bot *telegram.Bot, chatID int64, messageID int, imageUrl string, caption string, keyboard *telegram.InlineKeyboardMarkup) bool {
+	u := fasthttp.AcquireURI()
+	defer fasthttp.ReleaseURI(u)
+	u.Update(imageUrl)
+
+	if len(caption) > 200 {
+		caption = caption[:200-3] + "..."
+	}
+
+	_, err := bot.EditMessageMedia(telegram.EditMessageMedia{
+		ChatID:    chatID,
+		MessageID: messageID,
+		Media: &inputMediaPhotoCustom{
+			Media:     u.String(),
+			Caption:   caption,
+			ParseMode: telegram.ParseModeMarkdown,
+			Type:      telegram.TypePhoto,
+		},
+		ReplyMarkup: keyboard,
+	})
+	if err != nil {
+		log.Err(err).Msg("error when updating image message")
+		return false
+	}
+	return true
 }
 
 // Printing messages
@@ -358,4 +414,15 @@ func printSeriesList(list []sonarr.Serie) []string {
 
 func printPageNum(pageNb, totalPages int) string {
 	return "\npage " + strconv.Itoa(pageNb) + "/" + strconv.Itoa(totalPages)
+}
+
+type inputMediaPhotoCustom struct {
+	Type      string `json:"type"`
+	Media     string `json:"media"`
+	Caption   string `json:"caption"`
+	ParseMode string `json:"parse_mode"`
+}
+
+func (i *inputMediaPhotoCustom) GetMedia() *telegram.InputFile {
+	return nil
 }
