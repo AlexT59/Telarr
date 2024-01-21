@@ -98,7 +98,7 @@ func (upd *Updates) Start(ctx context.Context) error {
 	}
 
 	// list of users waiting for the password
-	waitingForPassword := make(map[string]chan string)
+	waitingForPassword := make(map[int]chan string)
 	var waitingForPasswordMu sync.Mutex
 
 	upd.wg.Add(1)
@@ -116,11 +116,11 @@ func (upd *Updates) Start(ctx context.Context) error {
 					Msg("new update")
 
 				// get the username
-				var userName string
+				var userId int
 				if rcvUpdate.IsMessage() {
-					userName = rcvUpdate.Message.From.Username
+					userId = rcvUpdate.Message.From.ID
 				} else if rcvUpdate.IsCallbackQuery() {
-					userName = rcvUpdate.CallbackQuery.From.Username
+					userId = rcvUpdate.CallbackQuery.From.ID
 				}
 
 				// get the chat ID
@@ -133,7 +133,7 @@ func (upd *Updates) Start(ctx context.Context) error {
 
 				// check if the user is waiting for the password
 				waitingForPasswordMu.Lock()
-				if c, exist := waitingForPassword[userName]; exist {
+				if c, exist := waitingForPassword[userId]; exist {
 					c <- rcvUpdate.Message.Text
 					waitingForPasswordMu.Unlock()
 					continue
@@ -141,11 +141,11 @@ func (upd *Updates) Start(ctx context.Context) error {
 				waitingForPasswordMu.Unlock()
 
 				// check authorization
-				authorized := auth.CheckAutorized(userName)
+				authorized := auth.CheckAutorized(userId)
 				switch authorized {
 				// if the user is not authorized
 				case authentication.AuthStatusBlackListed:
-					log.Warn().Str("username", userName).Msg("user is blacklisted")
+					log.Warn().Int("userId", userId).Msg("user is blacklisted")
 					sendSimpleMessage(upd.bot, chatID, "You are blacklisted!\nPlease contact the administrator to remove you from the blacklist.")
 					continue
 				// if authorization failed
@@ -155,20 +155,20 @@ func (upd *Updates) Start(ctx context.Context) error {
 					continue
 				// if the user is new
 				case authentication.AuthStatusNewUser:
-					log.Info().Str("username", userName).Msg("new user")
+					log.Info().Int("userId", userId).Msg("new user")
 					sendSimpleMessage(upd.bot, chatID, "Welcome to the group "+rcvUpdate.Message.From.FirstName+"!\nPlease enter the password 🔑:")
 
 					// create the channel for the password
 					textChan := make(chan string)
 					// add the user to the waiting list
-					waitingForPassword[userName] = textChan
+					waitingForPassword[userId] = textChan
 					// wait for the user to be autorized
 					go func() {
-						log.Info().Str("username", userName).Msg("waiting for authorization")
-						auth.WaitForAutorization(userName, upd.bot, textChan, chatID)
+						log.Info().Int("userId", userId).Msg("waiting for authorization")
+						auth.WaitForAutorization(userId, upd.bot, textChan, chatID)
 						// remove the user from the waiting list
 						waitingForPasswordMu.Lock()
-						delete(waitingForPassword, userName)
+						delete(waitingForPassword, userId)
 						waitingForPasswordMu.Unlock()
 					}()
 					continue
@@ -177,8 +177,8 @@ func (upd *Updates) Start(ctx context.Context) error {
 					if rcvUpdate.IsMessage() {
 						// if it's a message
 						log.Trace().
-							Int("fromID", rcvUpdate.Message.From.ID).
-							Str("fromUsername", userName).
+							Int("fromID", userId).
+							Str("fromUsername", rcvUpdate.Message.From.Username).
 							Str("text", rcvUpdate.Message.Text).
 							Msg("new message")
 						upd.mess.handle(rcvUpdate.Message)

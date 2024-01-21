@@ -22,7 +22,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "success",
 			want: &Auth{
-				Attempts: make(map[string]int),
+				Attempts: make(map[int]int),
 				conf:     conf,
 			},
 			wantErr: false,
@@ -50,12 +50,12 @@ func TestAuth_CheckAutorized(t *testing.T) {
 	}
 
 	type fields struct {
-		Blacklist []string
-		Autorized []string
-		Attempts  map[string]int
+		Blacklist []int
+		Autorized []int
+		Attempts  map[int]int
 	}
 	type args struct {
-		userName string
+		userId int
 	}
 	tests := []struct {
 		name   string
@@ -66,36 +66,36 @@ func TestAuth_CheckAutorized(t *testing.T) {
 		{
 			name: "not autorized",
 			fields: fields{
-				Blacklist: []string{"user1", "user2"},
-				Autorized: []string{"user3", "user4"},
-				Attempts:  make(map[string]int),
+				Blacklist: []int{1, 2},
+				Autorized: []int{3, 4},
+				Attempts:  make(map[int]int),
 			},
 			args: args{
-				userName: "user1",
+				userId: 1,
 			},
 			want: AuthStatusBlackListed,
 		},
 		{
 			name: "autorized",
 			fields: fields{
-				Blacklist: []string{"user1", "user2"},
-				Autorized: []string{"user3", "user4"},
-				Attempts:  make(map[string]int),
+				Blacklist: []int{1, 2},
+				Autorized: []int{3, 4},
+				Attempts:  make(map[int]int),
 			},
 			args: args{
-				userName: "user3",
+				userId: 3,
 			},
 			want: AuthStatusAutorized,
 		},
 		{
 			name: "new user",
 			fields: fields{
-				Blacklist: []string{"user1", "user2"},
-				Autorized: []string{"user3", "user4"},
-				Attempts:  make(map[string]int),
+				Blacklist: []int{1, 2},
+				Autorized: []int{3, 4},
+				Attempts:  make(map[int]int),
 			},
 			args: args{
-				userName: "user5",
+				userId: 5,
 			},
 			want: AuthStatusNewUser,
 		},
@@ -108,7 +108,7 @@ func TestAuth_CheckAutorized(t *testing.T) {
 				Attempts:  tt.fields.Attempts,
 				conf:      conf,
 			}
-			if got := a.CheckAutorized(tt.args.userName); got != tt.want {
+			if got := a.CheckAutorized(tt.args.userId); got != tt.want {
 				t.Errorf("Auth.CheckAutorized() = %v, want %v", got, tt.want)
 			}
 		})
@@ -124,12 +124,12 @@ func TestAuth_Autorize(t *testing.T) {
 	}
 
 	type fields struct {
-		Blacklist []string
-		Autorized []string
-		Attempts  map[string]int
+		Blacklist []int
+		Autorized []int
+		Attempts  map[int]int
 	}
 	type args struct {
-		userName string
+		userId   int
 		password string
 	}
 	tests := []struct {
@@ -141,12 +141,12 @@ func TestAuth_Autorize(t *testing.T) {
 		{
 			name: "wrong password",
 			fields: fields{
-				Blacklist: []string{"user1", "user2"},
-				Autorized: []string{"user3", "user4"},
-				Attempts:  make(map[string]int),
+				Blacklist: []int{1, 2},
+				Autorized: []int{3, 4},
+				Attempts:  make(map[int]int),
 			},
 			args: args{
-				userName: "user1",
+				userId:   1,
 				password: "wrongPassword",
 			},
 			want: AuthStatusWrongPassword,
@@ -154,12 +154,12 @@ func TestAuth_Autorize(t *testing.T) {
 		{
 			name: "autorized",
 			fields: fields{
-				Blacklist: []string{"user1", "user2"},
-				Autorized: []string{"user3", "user4"},
-				Attempts:  make(map[string]int),
+				Blacklist: []int{1, 2},
+				Autorized: []int{3, 4},
+				Attempts:  make(map[int]int),
 			},
 			args: args{
-				userName: "user3",
+				userId:   3,
 				password: "password",
 			},
 			want: AuthStatusAutorized,
@@ -167,12 +167,12 @@ func TestAuth_Autorize(t *testing.T) {
 		{
 			name: "max attempts",
 			fields: fields{
-				Blacklist: []string{"user1", "user2"},
-				Autorized: []string{"user3", "user4"},
-				Attempts:  map[string]int{"user5": maxAttempts},
+				Blacklist: []int{1, 2},
+				Autorized: []int{3, 4},
+				Attempts:  map[int]int{5: maxAttempts},
 			},
 			args: args{
-				userName: "user5",
+				userId:   5,
 				password: "password",
 			},
 			want: AuthStatusMaxAttempts,
@@ -186,7 +186,7 @@ func TestAuth_Autorize(t *testing.T) {
 				Attempts:  tt.fields.Attempts,
 				conf:      conf,
 			}
-			if got, _ := a.AutorizeNewUser(tt.args.userName, tt.args.password); got != tt.want {
+			if got, _ := a.AutorizeNewUser(tt.args.userId, tt.args.password); got != tt.want {
 				t.Errorf("Auth.Autorize() = %v, want %v", got, tt.want)
 			}
 		})
