@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/showwin/speedtest-go/speedtest"
 	"gitlab.com/toby3d/telegram"
 )
 
@@ -69,10 +70,62 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 		case "status":
 			log.Trace().Str("username", rcvMess.From.Username).Msg("getting status")
 
+			mId := sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Getting radarr status...")
 			radarrStatus := radarr.GetStatus(mess.radarrConfig)
+			mess.bot.DeleteMessage(rcvMess.Chat.ID, mId)
+			mId = sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Getting sonarr status...")
 			sonarrStatus := sonarr.GetStatus(mess.sonarrConfig)
+			mess.bot.DeleteMessage(rcvMess.Chat.ID, mId)
+			str := radarrStatus.String() + "\n" + sonarrStatus.String() + "\n"
 
-			sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, radarrStatus.String()+"\n\n"+sonarrStatus.String(), telegram.NewReplyKeyboardRemove(false))
+			// get the speedtest
+			log.Trace().Msg("getting speedtest")
+			mId = sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Getting speedtest...")
+			spd := speedtest.New()
+			srvList, err := spd.FetchServers()
+			if err != nil {
+				log.Err(err).Msg("error when fetching speedtest servers")
+				str += "\n\nAn error occurred while fetching the speedtest servers."
+			} else {
+				targets, err := srvList.FindServer([]int{})
+				if err != nil {
+					log.Err(err).Msg("error when finding speedtest server")
+					str += "\n\nAn error occurred while finding the speedtest servers."
+				} else {
+					s := (*targets.Available())[0]
+					err = s.PingTest(nil)
+					if err != nil {
+						log.Err(err).Msg("error when pinging speedtest")
+					}
+					err = s.DownloadTest()
+					if err != nil {
+						log.Err(err).Msg("error when downloading speedtest")
+					}
+					err = s.UploadTest()
+					if err != nil {
+						log.Err(err).Msg("error when uploading speedtest")
+					}
+
+					str += "\n*Speed test*:\n"
+					str += "\t⏱ " + strconv.Itoa(int(s.Latency.Milliseconds())) + " ms\n"
+					str += "\t⬇️ " + strconv.FormatFloat(s.DLSpeed, 'f', 2, 64) + " Mbps\n"
+					str += "\t⬆️ " + strconv.FormatFloat(s.ULSpeed, 'f', 2, 64) + " Mbps\n"
+
+					s.Context.Reset()
+				}
+			}
+			mess.bot.DeleteMessage(rcvMess.Chat.ID, mId)
+
+			mId = sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Getting disk usage...")
+			diskStatus, err := getDiskUsage()
+			if err != nil {
+				log.Err(err).Msg("error when getting disk usage")
+			}
+			str += "\n*Disk usage*:\n"
+			str += "\tfree: " + diskStatus.FreeOfAll() + " (" + strconv.FormatFloat(diskStatus.FreePercent(), 'f', 2, 64) + "%)\n"
+			mess.bot.DeleteMessage(rcvMess.Chat.ID, mId)
+
+			sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, str, telegram.NewReplyKeyboardRemove(false))
 		case "stop":
 			log.Trace().Str("username", rcvMess.From.Username).Msg("canceling action")
 			sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, "Action canceled ✅", telegram.NewReplyKeyboardRemove(false))

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"syscall"
 	"telarr/internal/types"
 
 	"gitlab.com/toby3d/telegram"
@@ -16,8 +17,10 @@ const (
 	mediaTypeSerie mediaType = "serie"
 )
 
-// getPageStatus returns the current page and the total number of pages.
-func getPageStatus(message string) (int, int, error) {
+const pathForDiskUsage = "/srv/dev-disk-by-label-Documents/Documents"
+
+// getMsgPageInfo returns the current page and the total number of pages.
+func getMsgPageInfo(message string) (int, int, error) {
 	// get "page x/y" from the message and get only the x and y
 	pageStr, found := strings.CutPrefix(message[strings.LastIndex(message, "\n")+1:], "page ")
 	if !found {
@@ -175,4 +178,20 @@ func getAddMediaKeyboard(pageNb int, totalPages int, mediaType mediaType, addabl
 		return telegram.NewInlineKeyboardMarkup(navRow, addRow, editRow)
 	}
 	return telegram.NewInlineKeyboardMarkup(navRow, editRow)
+}
+
+func getDiskUsage() (types.DiskStatus, error) {
+	var disk types.DiskStatus
+
+	fs := syscall.Statfs_t{}
+	err := syscall.Statfs(pathForDiskUsage, &fs)
+	if err != nil {
+		return types.DiskStatus{}, err
+	}
+
+	disk.All = fs.Blocks * uint64(fs.Bsize)
+	disk.Free = fs.Bfree * uint64(fs.Bsize)
+	disk.Used = disk.All - disk.Free
+
+	return disk, nil
 }

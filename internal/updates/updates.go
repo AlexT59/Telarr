@@ -209,28 +209,28 @@ func (upd *Updates) Stop() error {
 // Sening messages
 
 // sendMessage sends a message to the chat and returns true if the message was sent successfully.
-func sendMessage(bot *telegram.Bot, p telegram.SendMessage) bool {
+func sendMessage(bot *telegram.Bot, p telegram.SendMessage) int {
 	if p.ParseMode == "" {
 		p.ParseMode = telegram.ParseModeMarkdown
 	}
 	p.DisableWebPagePreview = true
 
-	_, err := bot.SendMessage(p)
+	m, err := bot.SendMessage(p)
 	if err != nil {
 		log.Err(err).Msg("error when sending message")
-		return false
+		return -1
 	}
-	return true
+	return m.ID
 }
 
-func sendSimpleMessage(bot *telegram.Bot, chatID int64, text string) bool {
+func sendSimpleMessage(bot *telegram.Bot, chatID int64, text string) int {
 	return sendMessage(bot, telegram.SendMessage{
 		ChatID: chatID,
 		Text:   text,
 	})
 }
 
-func sendMessageWithKeyboard(bot *telegram.Bot, chatID int64, text string, keyboard telegram.ReplyMarkup) bool {
+func sendMessageWithKeyboard(bot *telegram.Bot, chatID int64, text string, keyboard telegram.ReplyMarkup) int {
 	return sendMessage(bot, telegram.SendMessage{
 		ChatID:      chatID,
 		Text:        text,

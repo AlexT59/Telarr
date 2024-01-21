@@ -59,7 +59,7 @@ type Season struct {
 }
 
 func GetStatus(config configuration.Sonarr) types.ServiceStatus {
-	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for status")
+	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting sonarr for status")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
 	r := sonarr.New(c)
 

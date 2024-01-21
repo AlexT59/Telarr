@@ -70,7 +70,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing next page of movies list")
 
 		// get the current page and the total number of pages
-		pageNb, totalPages, err := getPageStatus(rcvCallback.Message.Text)
+		pageNb, totalPages, err := getMsgPageInfo(rcvCallback.Message.Text)
 		if err != nil {
 			log.Err(err).Msg("error when getting page status")
 			return
@@ -83,7 +83,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing previous page of movies list")
 
 		// get the current page and the total number of pages
-		pageNb, totalPages, err := getPageStatus(rcvCallback.Message.Text)
+		pageNb, totalPages, err := getMsgPageInfo(rcvCallback.Message.Text)
 		if err != nil {
 			log.Err(err).Msg("error when getting page status")
 			return
@@ -123,7 +123,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 			ResizeKeyboard:  true,
 			Keyboard:        buttons,
 		}
-		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the movie or write his name it", keyboard)
+		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the movie or write his name it", keyboard) > 0
 		if sent {
 			cb.usersAction[rcvCallback.From.ID] = types.CallbackMovieDetails
 		}
@@ -156,7 +156,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 			ResizeKeyboard:  true,
 			Keyboard:        buttons,
 		}
-		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the movie or write his name it", keyboard)
+		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the movie or write his name it", keyboard) > 0
 		if sent {
 			cb.usersAction[rcvCallback.From.ID] = types.CallbackRemoveMovie
 		}
@@ -259,7 +259,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing next page of series list")
 
 		// get the current page and the total number of pages
-		pageNb, totalPages, err := getPageStatus(rcvCallback.Message.Text)
+		pageNb, totalPages, err := getMsgPageInfo(rcvCallback.Message.Text)
 		if err != nil {
 			log.Err(err).Msg("error when getting page status")
 			return
@@ -272,7 +272,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing previous page of series list")
 
 		// get the current page and the total number of pages
-		pageNb, totalPages, err := getPageStatus(rcvCallback.Message.Text)
+		pageNb, totalPages, err := getMsgPageInfo(rcvCallback.Message.Text)
 		if err != nil {
 			log.Err(err).Msg("error when getting page status")
 			return
@@ -312,7 +312,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 			ResizeKeyboard:  true,
 			Keyboard:        buttons,
 		}
-		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the serie or write his name it", keyboard)
+		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the serie or write his name it", keyboard) > 0
 		if sent {
 			cb.usersAction[rcvCallback.From.ID] = types.CallbackSerieDetails
 		}
@@ -345,7 +345,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 			ResizeKeyboard:  true,
 			Keyboard:        buttons,
 		}
-		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the serie or write his name it", keyboard)
+		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the serie or write his name it", keyboard) > 0
 		if sent {
 			cb.usersAction[rcvCallback.From.ID] = types.CallbackRemoveSerie
 		}
