@@ -20,6 +20,8 @@ const (
 	UserActionMovieDetails UserAction = "movieDetails"
 	// UserActionRemoveMovie is the action to ask for the removal of a movie.
 	UserActionRemoveMovie UserAction = "removeMovie"
+	// UserActionAddMovie is the action to ask for the addition of a movie.
+	UserActionAddMovie UserAction = "addMovie"
 
 	// UserActionlookSerieToAdd is the action to look for a serie to add.
 	UserActionLookSerieToAdd UserAction = "lookSerieToAdd"
@@ -27,6 +29,8 @@ const (
 	UserActionSerieDetails UserAction = "serieDetails"
 	// UserActionRemoveSerie is the action to ask for the removal of a serie.
 	UserActionRemoveSerie UserAction = "removeSerie"
+	// UserActionAddSerie is the action to ask for the addition of a serie.
+	UserActionAddSerie UserAction = "addSerie"
 )
 
 type CallbackAction string

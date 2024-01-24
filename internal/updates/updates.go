@@ -163,9 +163,11 @@ func (upd *Updates) Start(ctx context.Context) error {
 					// add the user to the waiting list
 					waitingForPassword[userId] = textChan
 					// wait for the user to be autorized
+					upd.wg.Add(1)
 					go func() {
+						defer upd.wg.Done()
 						log.Info().Int("userId", userId).Msg("waiting for authorization")
-						auth.WaitForAutorization(userId, upd.bot, textChan, chatID)
+						auth.WaitForAutorization(ctx, userId, upd.bot, textChan, chatID)
 						// remove the user from the waiting list
 						waitingForPasswordMu.Lock()
 						delete(waitingForPassword, userId)
@@ -185,7 +187,7 @@ func (upd *Updates) Start(ctx context.Context) error {
 					} else if rcvUpdate.IsCallbackQuery() {
 						// if it's a callback query
 						log.Trace().
-							Int("fromID", rcvUpdate.CallbackQuery.From.ID).
+							Int("fromID", userId).
 							Str("fromUsername", rcvUpdate.CallbackQuery.From.Username).
 							Str("data", rcvUpdate.CallbackQuery.Data).
 							Msg("new callback query")

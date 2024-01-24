@@ -125,7 +125,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		}
 		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the movie or write his name it", keyboard) > 0
 		if sent {
-			cb.usersAction[rcvCallback.From.ID] = types.CallbackMovieDetails
+			cb.usersAction[rcvCallback.From.ID] = types.UserActionMovieDetails
 		}
 	case types.CallbackBackToMoviesList:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("back to movies list")
@@ -158,7 +158,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		}
 		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the movie or write his name it", keyboard) > 0
 		if sent {
-			cb.usersAction[rcvCallback.From.ID] = types.CallbackRemoveMovie
+			cb.usersAction[rcvCallback.From.ID] = types.UserActionRemoveMovie
 		}
 	case types.CallbackConfirmRemoveMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("confirm remove movie")
@@ -219,11 +219,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		films := (cb.usersData[rcvCallback.From.ID].([]radarr.Film))
 		film := films[pageNb-1]
 		keyboard := getAddMediaKeyboard(pageNb, len(films), mediaTypeMovie, !film.IsInLibrary)
-		str := film.PrintMovieTitle()
-		if film.IsInLibrary {
-			str += "\n\nAlready in library ✅"
-		}
-		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, film.CoverImage, str, &keyboard)
+		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, film.CoverImage, film.PrintMovieTitleAndInLibrary(), &keyboard)
 	case types.CallbackPreviousAddMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing previous page of add media")
 
@@ -237,11 +233,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		films := (cb.usersData[rcvCallback.From.ID].([]radarr.Film))
 		film := films[pageNb-1]
 		keyboard := getAddMediaKeyboard(pageNb, len(films), mediaTypeMovie, !film.IsInLibrary)
-		str := film.PrintMovieTitle()
-		if film.IsInLibrary {
-			str += "\n\nAlready in library ✅"
-		}
-		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, film.CoverImage, str, &keyboard)
+		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, film.CoverImage, film.PrintMovieTitleAndInLibrary(), &keyboard)
 	case types.CallbackEditRequestAddMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("edit request movie")
 
@@ -252,6 +244,28 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		delete(cb.usersCurrPage, rcvCallback.From.ID)
 
 		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Please enter the name of the movie you want to add:")
+	case types.CallbackAddMovie:
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("add movie")
+
+		pageNb := cb.usersCurrPage[rcvCallback.From.ID]
+		films := (cb.usersData[rcvCallback.From.ID].([]radarr.Film))
+		film := films[pageNb-1]
+
+		// remove the last message
+		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
+
+		// show the quality profile list into a keyboard
+		profiles, err := radarr.GetQualityProfiles(cb.radarrConfig)
+		if err != nil {
+			log.Err(err).Msg("error when getting quality profiles")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while adding the movie.\nPlease contact the administrator.")
+			return
+		}
+		keyboard := getQualityProfileKeyboard(profiles)
+		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the quality profile for the movie "+film.PrintMovieTitle(), keyboard) > 0
+		if sent {
+			cb.usersAction[rcvCallback.From.ID] = types.UserActionAddMovie
+		}
 
 		/* Series */
 	// get the next page of the series list
@@ -314,7 +328,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		}
 		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the serie or write his name it", keyboard) > 0
 		if sent {
-			cb.usersAction[rcvCallback.From.ID] = types.CallbackSerieDetails
+			cb.usersAction[rcvCallback.From.ID] = types.UserActionSerieDetails
 		}
 	case types.CallbackBackToSeriesList:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("back to series list")
@@ -347,7 +361,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		}
 		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the serie or write his name it", keyboard) > 0
 		if sent {
-			cb.usersAction[rcvCallback.From.ID] = types.CallbackRemoveSerie
+			cb.usersAction[rcvCallback.From.ID] = types.UserActionRemoveSerie
 		}
 	case types.CallbackConfirmRemoveSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("confirm remove serie")
@@ -408,11 +422,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		series := (cb.usersData[rcvCallback.From.ID].([]sonarr.Serie))
 		serie := series[pageNb-1]
 		keyboard := getAddMediaKeyboard(pageNb, len(series), mediaTypeSerie, !serie.IsInLibrary)
-		str := serie.PrintSerieTitle()
-		if serie.IsInLibrary {
-			str += "\n\nAlready in library ✅"
-		}
-		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, serie.CoverImage, str, &keyboard)
+		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, serie.CoverImage, serie.PrintSerieTitleAndInLibrary(), &keyboard)
 	case types.CallbackPreviousAddSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("showing previous page of add media")
 
@@ -426,11 +436,7 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		series := (cb.usersData[rcvCallback.From.ID].([]sonarr.Serie))
 		serie := series[pageNb-1]
 		keyboard := getAddMediaKeyboard(pageNb, len(series), mediaTypeSerie, !serie.IsInLibrary)
-		str := serie.PrintSerieTitle()
-		if serie.IsInLibrary {
-			str += "\n\nAlready in library ✅"
-		}
-		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, serie.CoverImage, str, &keyboard)
+		editImageMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, serie.CoverImage, serie.PrintSerieTitleAndInLibrary(), &keyboard)
 	case types.CallbackEditRequestAddSerie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("edit request series")
 
@@ -441,6 +447,28 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		delete(cb.usersCurrPage, rcvCallback.From.ID)
 
 		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Please enter the name of the serie you want to add:")
+	case types.CallbackAddSerie:
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("add serie")
+
+		pageNb := cb.usersCurrPage[rcvCallback.From.ID]
+		series := (cb.usersData[rcvCallback.From.ID].([]sonarr.Serie))
+		serie := series[pageNb-1]
+
+		// remove the last message
+		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
+
+		// show the quality profile list into a keyboard
+		profiles, err := sonarr.GetQualityProfiles(cb.sonarrConfig)
+		if err != nil {
+			log.Err(err).Msg("error when getting quality profiles")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while adding the serie.\nPlease contact the administrator.")
+			return
+		}
+		keyboard := getQualityProfileKeyboard(profiles)
+		sent := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Select the quality profile for the serie "+serie.PrintSerieTitle(), keyboard) > 0
+		if sent {
+			cb.usersAction[rcvCallback.From.ID] = types.UserActionAddSerie
+		}
 
 	/* Common */
 	case types.CallbackCancel:

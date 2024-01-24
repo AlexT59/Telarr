@@ -2,6 +2,7 @@ package updates
 
 import (
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -178,6 +179,27 @@ func getAddMediaKeyboard(pageNb int, totalPages int, mediaType mediaType, addabl
 		return telegram.NewInlineKeyboardMarkup(navRow, addRow, editRow)
 	}
 	return telegram.NewInlineKeyboardMarkup(navRow, editRow)
+}
+
+func getQualityProfileKeyboard(profiles []types.QualityProfile) telegram.ReplyKeyboardMarkup {
+	var buttons [][]*telegram.KeyboardButton
+	sort.Slice(profiles, func(i, j int) bool {
+		return profiles[i].Name < profiles[j].Name
+	})
+	for i := 0; i < len(profiles); i += 2 {
+		butRow := []*telegram.KeyboardButton{{Text: profiles[i].Name}}
+		if i+1 < len(profiles) {
+			butRow = append(butRow, &telegram.KeyboardButton{Text: profiles[i+1].Name})
+		}
+		buttons = append(buttons, butRow)
+	}
+	keyboard := telegram.ReplyKeyboardMarkup{
+		OneTimeKeyboard: true,
+		ResizeKeyboard:  true,
+		Keyboard:        buttons,
+	}
+
+	return keyboard
 }
 
 func getDiskUsage() (types.DiskStatus, error) {

@@ -1,6 +1,7 @@
 package authentication
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"strconv"
@@ -160,59 +161,62 @@ func (a *Auth) AutorizeNewUser(userId int, password string) (AuthStatus, int) {
 	return AuthStatusAutorized, -1
 }
 
-func (a *Auth) WaitForAutorization(userId int, bot *telegram.Bot, textChan chan string, chatId int64) {
+func (a *Auth) WaitForAutorization(ctx context.Context, userId int, bot *telegram.Bot, textChan chan string, chatId int64) {
 	// wait for the user to be autorized
 	for {
-		text := <-textChan
-
-		status, attemps := a.AutorizeNewUser(userId, text)
-		switch status {
-		case AuthStatusAutorized:
-			log.Debug().Int("username", userId).Msg("user is now authorized")
-
-			_, err := bot.SendMessage(telegram.SendMessage{
-				ChatID: chatId,
-				Text:   "You are now authorized! 🎉",
-			})
-			if err != nil {
-				log.Err(err).Msg("error when sending message")
-			}
-
+		select {
+		case <-ctx.Done():
 			return
-		case AuthStatusWrongPassword:
-			log.Debug().Int("username", userId).Msg("wrong password")
+		case text := <-textChan:
+			status, attemps := a.AutorizeNewUser(userId, text)
+			switch status {
+			case AuthStatusAutorized:
+				log.Debug().Int("username", userId).Msg("user is now authorized")
 
-			_, err := bot.SendMessage(telegram.SendMessage{
-				ChatID: chatId,
-				Text:   "Wrong password ❌\nYou have " + strconv.Itoa(attemps) + " attempts left.",
-			})
-			if err != nil {
-				log.Err(err).Msg("error when sending message")
+				_, err := bot.SendMessage(telegram.SendMessage{
+					ChatID: chatId,
+					Text:   "You are now authorized! 🎉",
+				})
+				if err != nil {
+					log.Err(err).Msg("error when sending message")
+				}
+
+				return
+			case AuthStatusWrongPassword:
+				log.Debug().Int("username", userId).Msg("wrong password")
+
+				_, err := bot.SendMessage(telegram.SendMessage{
+					ChatID: chatId,
+					Text:   "Wrong password ❌\nYou have " + strconv.Itoa(attemps) + " attempts left.",
+				})
+				if err != nil {
+					log.Err(err).Msg("error when sending message")
+				}
+			case AuthStatusMaxAttempts:
+				log.Debug().Int("username", userId).Msg("maximum number of attempts reached")
+
+				_, err := bot.SendMessage(telegram.SendMessage{
+					ChatID: chatId,
+					Text:   "You have reached the maximum number of attempts.\nYou are now blacklisted!",
+				})
+				if err != nil {
+					log.Err(err).Msg("error when sending message")
+				}
+
+				return
+			case AuthStatusError:
+				log.Debug().Int("username", userId).Msg("error when autorizing user")
+
+				_, err := bot.SendMessage(telegram.SendMessage{
+					ChatID: chatId,
+					Text:   "An error occurred while checking your authorization.\nPlease contact the administrator.",
+				})
+				if err != nil {
+					log.Err(err).Msg("error when sending message")
+				}
+
+				return
 			}
-		case AuthStatusMaxAttempts:
-			log.Debug().Int("username", userId).Msg("maximum number of attempts reached")
-
-			_, err := bot.SendMessage(telegram.SendMessage{
-				ChatID: chatId,
-				Text:   "You have reached the maximum number of attempts.\nYou are now blacklisted!",
-			})
-			if err != nil {
-				log.Err(err).Msg("error when sending message")
-			}
-
-			return
-		case AuthStatusError:
-			log.Debug().Int("username", userId).Msg("error when autorizing user")
-
-			_, err := bot.SendMessage(telegram.SendMessage{
-				ChatID: chatId,
-				Text:   "An error occurred while checking your authorization.\nPlease contact the administrator.",
-			})
-			if err != nil {
-				log.Err(err).Msg("error when sending message")
-			}
-
-			return
 		}
 	}
 }

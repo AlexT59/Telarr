@@ -128,6 +128,11 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 			sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, str, telegram.NewReplyKeyboardRemove(false))
 		case "stop":
 			log.Trace().Str("username", rcvMess.From.Username).Msg("canceling action")
+
+			// remove the data from the user
+			delete(mess.usersData, rcvMess.From.ID)
+			delete(mess.usersCurrPage, rcvMess.From.ID)
+
 			sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, "Action canceled ✅", telegram.NewReplyKeyboardRemove(false))
 
 		default:
@@ -140,7 +145,13 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 		if action, exist := mess.usersAction[rcvMess.From.ID]; exist {
 			delete(mess.usersAction, rcvMess.From.ID)
 
-			switch action {
+			if action.(types.UserAction) == types.UserActionRemoveSerie {
+				println("remove serie")
+			} else {
+				println("not remove serie")
+			}
+
+			switch action.(types.UserAction) {
 			/* Movies */
 			case types.UserActionLookMovieToAdd:
 				movieName := rcvMess.Text
@@ -210,6 +221,38 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 				str += "\n_MovieId: " + strconv.Itoa(int(film.MovieId)) + "_"
 				str += "\n\nAre you sure you want to remove this movie from your library?"
 				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, str, getConfirmRemoveKeyboard(mediaTypeMovie))
+			case types.UserActionAddMovie:
+				qualityProfileName := rcvMess.Text
+
+				pageNb := mess.usersCurrPage[rcvMess.From.ID]
+				films := (mess.usersData[rcvMess.From.ID].([]radarr.Film))
+				film := films[pageNb-1]
+
+				log.Trace().Str("username", rcvMess.From.Username).Str("qualityProfileName", qualityProfileName).Str("movie", film.Title).Msg("adding movie")
+
+				// get the quality profile id
+				qualityProfileId, err := radarr.GetQualityProfileId(mess.radarrConfig, qualityProfileName)
+				if err != nil {
+					log.Err(err).Msg("error when getting quality profile id")
+					sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "An error occurred while getting the quality profile id.\nPlease contact the administrator.")
+					return
+				}
+
+				// add the movie
+				err = radarr.AddFilm(mess.radarrConfig, film, qualityProfileId)
+				if err != nil {
+					log.Err(err).Msg("error when adding movie")
+					sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "An error occurred while adding the movie.\nPlease contact the administrator.")
+					return
+				}
+
+				// remove the data from the user
+				delete(mess.usersData, rcvMess.From.ID)
+				delete(mess.usersCurrPage, rcvMess.From.ID)
+
+				// send the confirmation message
+				log.Trace().Str("username", rcvMess.From.Username).Str("movie", film.Title).Msg("movie added")
+				sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Movie "+film.PrintMovieTitle()+" added ✅")
 
 				/* Series */
 			case types.UserActionLookSerieToAdd:
@@ -280,6 +323,39 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 				str += "\n_SerieId: " + strconv.Itoa(int(serie.SerieId)) + "_"
 				str += "\n\nAre you sure you want to remove this serie from your library?"
 				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, str, getConfirmRemoveKeyboard(mediaTypeSerie))
+			case types.UserActionAddSerie:
+				qualityProfileName := rcvMess.Text
+
+				pageNb := mess.usersCurrPage[rcvMess.From.ID]
+				series := (mess.usersData[rcvMess.From.ID].([]sonarr.Serie))
+				serie := series[pageNb-1]
+
+				log.Trace().Str("username", rcvMess.From.Username).Str("qualityProfileName", qualityProfileName).Str("serie", serie.Title).Msg("adding serie")
+
+				// get the quality profile id
+				qualityProfileId, err := sonarr.GetQualityProfileId(mess.sonarrConfig, qualityProfileName)
+				if err != nil {
+					log.Err(err).Msg("error when getting quality profile id")
+					sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "An error occurred while getting the quality profile id.\nPlease contact the administrator.")
+					return
+				}
+
+				// add the serie
+				err = sonarr.AddSerie(mess.sonarrConfig, serie, qualityProfileId)
+				if err != nil {
+					log.Err(err).Msg("error when adding serie")
+					sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "An error occurred while adding the serie.\nPlease contact the administrator.")
+					return
+				}
+
+				// remove the data from the user
+				delete(mess.usersData, rcvMess.From.ID)
+				delete(mess.usersCurrPage, rcvMess.From.ID)
+
+				// send the confirmation message
+				log.Trace().Str("username", rcvMess.From.Username).Str("serie", serie.Title).Msg("serie added")
+				sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Serie "+serie.PrintSerieTitle()+" added ✅")
+
 			default:
 				log.Warn().Str("username", rcvMess.From.Username).Str("action", action.String()).Msg("unknown action")
 			}

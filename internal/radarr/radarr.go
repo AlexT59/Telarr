@@ -1,7 +1,6 @@
 package radarr
 
 import (
-	"strconv"
 	"telarr/configuration"
 	"telarr/internal/types"
 
@@ -9,44 +8,6 @@ import (
 	"golift.io/starr"
 	"golift.io/starr/radarr"
 )
-
-type Film struct {
-	TmdbId  int64
-	MovieId int64
-
-	// IsInLibrary is true if the film is in the library.
-	IsInLibrary bool
-
-	// Title is the title of the film.
-	Title string
-	// Year is the release year of the film.
-	Year int
-
-	// CoverImage is the url to the cover of the film.
-	CoverImage string
-
-	// Runtime is the runtime of the film in minutes.
-	Runtime int
-
-	// Rating is the rating of the film (/10).
-	Rating float64
-	// NumberOfVotes is the number of votes for the film.
-	NumberOfVotes int
-
-	// Overview is the overview of the film.
-	Overview string
-	// Genres is the list of genres of the film.
-	Genres []string
-	// Studio is the studio of the film.
-	Studio string
-
-	// Quality is the quality of the film.
-	Quality string
-	// Downloaded is true if the film is downloaded.
-	Downloaded bool
-	// Size is the size of the film on disk GB.
-	Size float64
-}
 
 func GetStatus(config configuration.Radarr) types.ServiceStatus {
 	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for status")
@@ -167,58 +128,86 @@ func LookupFilm(config configuration.Radarr, movieName string) ([]Film, error) {
 	return filmsList, nil
 }
 
-/* Film */
+func AddFilm(config configuration.Radarr, film Film, qualityProfileId int64) error {
+	log.Trace().Str("movieName", film.Title).Str("endpoint", config.Endpoint).Msg("contacting radarr to add movie")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := radarr.New(c)
 
-func (f Film) PrintMovieTitle() string {
-	str := "🎬 *" + f.Title + "* (_" + strconv.Itoa(f.Year) + "_)"
+	_, err := r.AddMovie(&radarr.AddMovieInput{
+		Title:            film.Title,
+		TmdbID:           film.TmdbId,
+		QualityProfileID: qualityProfileId,
+		Monitored:        true,
+		RootFolderPath:   "/movies",
+		AddOptions: &radarr.AddMovieOptions{
+			SearchForMovie: true,
+			Monitor:        "movieOnly",
+		},
+	})
+	if err != nil {
+		return err
+	}
 
-	return str
+	return nil
 }
 
-func (f Film) PrintMovieDetails() string {
-	str := "📅 " + "*Release year*: " + strconv.Itoa(f.Year) + "\n"
-	str += "🕒 " + "*Duration*: " + strconv.Itoa(f.Runtime) + " mins" + "\n"
-	str += "⭐ " + "*Rating*: " + strconv.FormatFloat(f.Rating, 'f', 1, 64) + "/10 (_" + strconv.Itoa(f.NumberOfVotes) + " votes_)\n"
-	str += "🎞 " + "*Genres*: "
-	for i, genre := range f.Genres {
-		if i != 0 {
-			str += ", "
+func GetQualityProfiles(config configuration.Radarr) ([]types.QualityProfile, error) {
+	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for quality profiles")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := radarr.New(c)
+
+	profiles, err := r.GetQualityProfiles()
+	if err != nil {
+		return nil, err
+	}
+
+	// convert the profiles to the QualityProfile struct
+	var profilesList []types.QualityProfile
+	for _, profile := range profiles {
+		p := types.QualityProfile{
+			ID:   profile.ID,
+			Name: profile.Name,
 		}
-		str += genre
-	}
-	str += "\n"
-	str += "🏢 " + "*Studio*: " + f.Studio + "\n"
-	str += "📝 " + "*Overview*: " + f.Overview + "\n"
-	str += "\n"
-
-	str += "📡 " + "*Status*: "
-	if f.Downloaded {
-		str += "Downloaded ✅\n"
-		str += "📺 " + "*Quality*: " + f.Quality + "\n"
-		str += "💾 " + "*Size*: " + strconv.FormatFloat(f.Size, 'f', 2, 64) + " GB\n"
-	} else {
-		str += "Missing ❌\n"
+		profilesList = append(profilesList, p)
 	}
 
-	str += "\n🔗 [The Movie DB](https://www.themoviedb.org/movie/" + strconv.Itoa(int(f.TmdbId)) + ")"
+	return profilesList, nil
+}
 
-	return str
+func GetQualityProfileId(config configuration.Radarr, profileName string) (int64, error) {
+	log.Trace().Str("profileName", profileName).Str("endpoint", config.Endpoint).Msg("contacting radarr for quality profile id")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := radarr.New(c)
+
+	profiles, err := r.GetQualityProfiles()
+	if err != nil {
+		return -1, err
+	}
+
+	for _, profile := range profiles {
+		if profile.Name == profileName {
+			return profile.ID, nil
+		}
+	}
+
+	return -1, nil
 }
 
 /* Tools */
 
 func toFilmStruct(film *radarr.Movie) Film {
 	f := Film{
-		TmdbId:      film.TmdbID,
-		MovieId:     film.ID,
-		IsInLibrary: film.ID > 0,
-		Title:       film.Title,
-		Year:        film.Year,
-		Runtime:     film.Runtime,
-		Overview:    film.Overview,
-		Genres:      film.Genres,
-		Studio:      film.Studio,
-		Size:        0,
+		TmdbId:        film.TmdbID,
+		MovieId:       film.ID,
+		IsInLibrary:   film.ID > 0,
+		Title:         film.Title,
+		OriginalTitle: film.OriginalTitle,
+		Year:          film.Year,
+		Runtime:       film.Runtime,
+		Overview:      film.Overview,
+		Genres:        film.Genres,
+		Studio:        film.Studio,
+		Size:          0,
 	}
 
 	if film.HasFile {

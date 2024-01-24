@@ -1,7 +1,6 @@
 package sonarr
 
 import (
-	"strconv"
 	"telarr/configuration"
 	"telarr/internal/types"
 
@@ -9,44 +8,6 @@ import (
 	"golift.io/starr"
 	"golift.io/starr/sonarr"
 )
-
-type Serie struct {
-	TvdbId  int64
-	SerieId int64
-
-	// IsInLibrary is true if the serie is in the library.
-	IsInLibrary bool
-
-	// Title is the title of the serie.
-	Title string
-	// Year is the release year of the serie.
-	Year int
-
-	// Seasons is the list of seasons of the serie.
-	Seasons []Season
-	// TotalSeasonsCount is the total number of seasons.
-	TotalSeasonsCount int
-
-	// CoverImage is the url to the cover of the serie.
-	CoverImage string
-
-	// Rating is the rating of the serie (/10).
-	Rating float64
-	// NumberOfVotes is the number of votes for the serie.
-	NumberOfVotes int
-
-	// Overview is the overview of the serie.
-	Overview string
-	// Genres is the list of genres of the serie.
-	Genres []string
-	// Studio is the studio of the serie.
-	Studio string
-
-	// Downloaded is true if the serie is downloaded.
-	Downloaded bool
-	// Size is the size of the serie on disk GB.
-	Size float64
-}
 
 type Season struct {
 	// SeasonNumber is the number of the season.
@@ -178,41 +139,68 @@ func LookupSerie(config configuration.Sonarr, serieName string) ([]Serie, error)
 	return seriesList, nil
 }
 
-/* Serie */
+func AddSerie(config configuration.Sonarr, serie Serie, qualityProfileId int64) error {
+	log.Trace().Str("serieTitle", serie.Title).Str("endpoint", config.Endpoint).Msg("contacting radarr to add serie")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := sonarr.New(c)
 
-func (s Serie) PrintSerieTitle() string {
-	str := "📺 *" + s.Title + "* (_" + strconv.Itoa(s.Year) + "_)"
+	_, err := r.AddSeries(&sonarr.AddSeriesInput{
+		Title:            serie.Title,
+		TvdbID:           serie.TvdbId,
+		QualityProfileID: qualityProfileId,
+		Monitored:        true,
+		RootFolderPath:   "/tv",
+		AddOptions: &sonarr.AddSeriesOptions{
+			SearchForMissingEpisodes: true,
+		},
+	})
+	if err != nil {
+		return err
+	}
 
-	return str
+	return nil
 }
 
-func (s Serie) PrintSerieDetails() string {
-	str := "📅 " + "*Release year*: " + strconv.Itoa(s.Year) + "\n"
-	str += "⭐ " + "*Rating*: " + strconv.FormatFloat(s.Rating, 'f', 1, 64) + "/10 (_" + strconv.Itoa(s.NumberOfVotes) + " votes_)\n"
-	str += "🎞 " + "*Genres*: "
-	for i, genre := range s.Genres {
-		if i != 0 {
-			str += ", "
-		}
-		str += genre
-	}
-	str += "\n"
-	str += "📝 " + "*Overview*: " + s.Overview + "\n"
-	str += "\n"
+func GetQualityProfiles(config configuration.Sonarr) ([]types.QualityProfile, error) {
+	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for quality profiles")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	s := sonarr.New(c)
 
-	str += "💾 " + "*Size*: " + strconv.FormatFloat(s.Size, 'f', 2, 64) + " GB\n"
-
-	str += "*Seasons* (" + strconv.Itoa(s.TotalSeasonsCount) + "): \n"
-	for _, season := range s.Seasons {
-		if season.SeasonNumber == 0 {
-			str += "\t- _Specials "
-		} else {
-			str += "\t- _Season " + strconv.Itoa(season.SeasonNumber)
-		}
-		str += " (" + strconv.Itoa(season.DownloadedEpisodes) + "/" + strconv.Itoa(season.TotalEpisodes) + ")_\n"
+	profiles, err := s.GetQualityProfiles()
+	if err != nil {
+		return nil, err
 	}
 
-	return str
+	// convert the profiles to the QualityProfile struct
+	var profilesList []types.QualityProfile
+	for _, profile := range profiles {
+		p := types.QualityProfile{
+			ID:   profile.ID,
+			Name: profile.Name,
+		}
+		profilesList = append(profilesList, p)
+	}
+
+	return profilesList, nil
+}
+
+func GetQualityProfileId(config configuration.Sonarr, profileName string) (int64, error) {
+	log.Trace().Str("profileName", profileName).Str("endpoint", config.Endpoint).Msg("contacting radarr for quality profile id")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	s := sonarr.New(c)
+
+	profiles, err := s.GetQualityProfiles()
+	if err != nil {
+		return -1, err
+	}
+
+	for _, profile := range profiles {
+		if profile.Name == profileName {
+			return profile.ID, nil
+		}
+	}
+
+	return -1, nil
 }
 
 /* Tools */
