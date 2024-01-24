@@ -128,12 +128,12 @@ func LookupFilm(config configuration.Radarr, movieName string) ([]Film, error) {
 	return filmsList, nil
 }
 
-func AddFilm(config configuration.Radarr, film Film, qualityProfileId int64) error {
+func AddFilm(config configuration.Radarr, film Film, qualityProfileId int64) (int64, error) {
 	log.Trace().Str("movieName", film.Title).Str("endpoint", config.Endpoint).Msg("contacting radarr to add movie")
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
 	r := radarr.New(c)
 
-	_, err := r.AddMovie(&radarr.AddMovieInput{
+	newFilm, err := r.AddMovie(&radarr.AddMovieInput{
 		Title:            film.Title,
 		TmdbID:           film.TmdbId,
 		QualityProfileID: qualityProfileId,
@@ -145,10 +145,10 @@ func AddFilm(config configuration.Radarr, film Film, qualityProfileId int64) err
 		},
 	})
 	if err != nil {
-		return err
+		return -1, err
 	}
 
-	return nil
+	return newFilm.ID, nil
 }
 
 func GetQualityProfiles(config configuration.Radarr) ([]types.QualityProfile, error) {
@@ -191,6 +191,38 @@ func GetQualityProfileId(config configuration.Radarr, profileName string) (int64
 	}
 
 	return -1, nil
+}
+
+// GetDownloadingStatus returns the downloading status of a film.
+func GetDownloadingStatus(config configuration.Radarr, filmId int) (types.DownloadingStatus, error) {
+	log.Trace().Str("endpoint", config.Endpoint).Msg("contacting radarr for downloading status")
+	c := starr.New(config.ApiKey, config.Endpoint, 0)
+	r := radarr.New(c)
+
+	queue, err := r.GetQueuePage(
+		&starr.PageReq{
+			Filter: radarr.FilterGrabbed,
+		},
+	)
+	if err != nil {
+		return types.DownloadingStatus{}, err
+	}
+
+	// get our film in the queue
+	for _, rec := range queue.Records {
+		if rec.MovieID == int64(filmId) {
+			return types.DownloadingStatus{
+				Found:                   true,
+				FilmId:                  rec.MovieID,
+				Status:                  rec.TrackedDownloadState,
+				Size:                    rec.Size,
+				SizeLeft:                rec.Sizeleft,
+				EstimatedCompletionTime: rec.EstimatedCompletionTime,
+			}, nil
+		}
+	}
+
+	return types.DownloadingStatus{Found: false}, nil
 }
 
 /* Tools */

@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -266,6 +267,36 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 		if sent {
 			cb.usersAction[rcvCallback.From.ID] = types.UserActionAddMovie
 		}
+	case types.CallbackFollowDownloadingStatusMovie:
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("getting downloading status")
+
+		status, err := getDownloadingStatus(cb.bot, rcvCallback, cb.radarrConfig)
+		if err != nil {
+			return
+		}
+
+		// remove the last message keyboard
+		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, rcvCallback.Message.Text, nil)
+		// send the downloading status
+		if !status.Found {
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "This movie is not in the queue.\n If you just added it, please wait a minute.")
+			return
+		}
+		sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, status.PrintDownloadingStatus(5), telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{telegram.NewInlineKeyboardButton("Refresh now 🔄", types.CallbackRefreshDownloadingStatusMovie.String())}))
+	case types.CallbackRefreshDownloadingStatusMovie:
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("refresh downloading status")
+
+		status, err := getDownloadingStatus(cb.bot, rcvCallback, cb.radarrConfig)
+		if err != nil {
+			return
+		}
+
+		if !status.Found {
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "This movie is not in the queue anymore.")
+			return
+		}
+		keyboard := telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{telegram.NewInlineKeyboardButton("Refresh now 🔄", types.CallbackRefreshDownloadingStatusMovie.String())})
+		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, status.PrintDownloadingStatus(5), &keyboard)
 
 		/* Series */
 	// get the next page of the series list
@@ -495,4 +526,31 @@ func checkUserAction(cb *callbacks, user *telegram.User, currentMsg *telegram.Me
 	}
 
 	return true
+}
+
+func getDownloadingStatus(bot *telegram.Bot, rcvCallback *telegram.CallbackQuery, radarrConfig configuration.Radarr) (types.DownloadingStatus, error) {
+	// get the film id from the message
+	msgParts := strings.Split(rcvCallback.Message.Text, "\n")
+	filmIdStr, found := strings.CutPrefix(msgParts[len(msgParts)-1], "movieId: ") // get the second line and remove the "MovieId: " prefix
+	if !found {
+		log.Warn().Str("username", rcvCallback.From.Username).Msg("film ID not found")
+		sendSimpleMessage(bot, rcvCallback.Message.Chat.ID, "An error occurred while getting the downloading status.\nPlease contact the administrator.")
+		return types.DownloadingStatus{}, fmt.Errorf("film ID not found in %v", rcvCallback.Message.Text)
+	}
+	filmId, err := strconv.Atoi(filmIdStr)
+	if err != nil {
+		log.Err(err).Str("filmIdStr", filmIdStr).Msg("error when converting film ID")
+		sendSimpleMessage(bot, rcvCallback.Message.Chat.ID, "An error occurred while getting the downloading status.\nPlease contact the administrator.")
+		return types.DownloadingStatus{}, err
+	}
+
+	// get the downloading status
+	status, err := radarr.GetDownloadingStatus(radarrConfig, filmId)
+	if err != nil {
+		log.Err(err).Msg("error when getting downloading status")
+		sendSimpleMessage(bot, rcvCallback.Message.Chat.ID, "An error occurred while getting the downloading status.\nPlease contact the administrator.")
+		return types.DownloadingStatus{}, err
+	}
+
+	return status, nil
 }

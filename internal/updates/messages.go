@@ -239,7 +239,7 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 				}
 
 				// add the movie
-				err = radarr.AddFilm(mess.radarrConfig, film, qualityProfileId)
+				newFilmId, err := radarr.AddFilm(mess.radarrConfig, film, qualityProfileId)
 				if err != nil {
 					log.Err(err).Msg("error when adding movie")
 					sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "An error occurred while adding the movie.\nPlease contact the administrator.")
@@ -252,7 +252,7 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 
 				// send the confirmation message
 				log.Trace().Str("username", rcvMess.From.Username).Str("movie", film.Title).Msg("movie added")
-				sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Movie "+film.PrintMovieTitle()+" added ✅")
+				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, "Movie "+film.PrintMovieTitle()+" added ✅\n_movieId: "+strconv.Itoa(int(newFilmId))+"_", telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{telegram.NewInlineKeyboardButton("Follow downloading status ℹ️", types.CallbackFollowDownloadingStatusMovie.String())}))
 
 				/* Series */
 			case types.UserActionLookSerieToAdd:
