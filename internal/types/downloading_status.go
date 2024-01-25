@@ -64,6 +64,10 @@ func (d DownloadingStatus) PrintDownloadingStatus(refreshRateSec int64) string {
 	return str
 }
 
+func (d DownloadingStatus) IsImported() bool {
+	return d.Status == "imported"
+}
+
 func printStatus(status string) string {
 	switch status {
 	case "downloading":

@@ -252,7 +252,7 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 
 				// send the confirmation message
 				log.Trace().Str("username", rcvMess.From.Username).Str("movie", film.Title).Msg("movie added")
-				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, "Movie "+film.PrintMovieTitle()+" added ✅\n_movieId: "+strconv.Itoa(int(newFilmId))+"_", telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{telegram.NewInlineKeyboardButton("Follow downloading status ℹ️", types.CallbackFollowDownloadingStatusMovie.String())}))
+				sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, "Movie "+film.PrintMovieTitle()+" added ✅\n_movieId: "+strconv.Itoa(int(newFilmId))+"_", telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{telegram.NewInlineKeyboardButton("Follow downloading status 📡", types.CallbackFollowDownloadingStatusMovie.String())}))
 
 				/* Series */
 			case types.UserActionLookSerieToAdd:
