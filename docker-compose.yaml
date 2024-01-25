@@ -9,5 +9,5 @@ services:
       - PGID=1000
       - TZ=Europe/London
     volumes:
-      - /path/to/appdata/configFile.yaml:/config/config.yaml
-      - /path/to/auth/files:/opt/telarr/auth # autorized.json, blacklist.json, admin.json
+      - /path/to/appdata/config.yaml:/config/config.yaml
+      - /path/to/auth/files:/opt/telarr/auth # autorized.json, blacklist.json
