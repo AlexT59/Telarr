@@ -202,6 +202,13 @@ func getQualityProfileKeyboard(profiles []types.QualityProfile) telegram.ReplyKe
 	return keyboard
 }
 
+func getFollowDownloadingStatusKeyboard() telegram.InlineKeyboardMarkup {
+	return telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{
+		telegram.NewInlineKeyboardButton("Refresh now 🔄", types.CallbackRefreshDownloadingStatusMovie.String()),
+		telegram.NewInlineKeyboardButton("Stop refreshing 🛑", types.CallbackCancelFollowDownloadingStatusMovie.String()),
+	})
+}
+
 func getDiskUsage() (types.DiskStatus, error) {
 	var disk types.DiskStatus
 

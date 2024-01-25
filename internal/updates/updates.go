@@ -79,12 +79,13 @@ func New(config configuration.Configuration) (*Updates, error) {
 			usersCurrPage: usersCurrPage,
 		},
 		cb: &callbacks{
-			bot:           bot,
-			radarrConfig:  config.Radarr,
-			sonarrConfig:  config.Sonarr,
-			usersAction:   usersAction,
-			usersData:     usersData,
-			usersCurrPage: usersCurrPage,
+			bot:                    bot,
+			radarrConfig:           config.Radarr,
+			sonarrConfig:           config.Sonarr,
+			usersAction:            usersAction,
+			usersData:              usersData,
+			usersCurrPage:          usersCurrPage,
+			usersDownloadingStatus: make(map[int]types.DownloadingStatusMessage),
 		},
 	}, nil
 }
@@ -191,7 +192,7 @@ func (upd *Updates) Start(ctx context.Context) error {
 							Str("fromUsername", rcvUpdate.CallbackQuery.From.Username).
 							Str("data", rcvUpdate.CallbackQuery.Data).
 							Msg("new callback query")
-						upd.cb.handle(rcvUpdate.CallbackQuery)
+						upd.cb.handle(ctx, rcvUpdate.CallbackQuery)
 					}
 				}
 			}

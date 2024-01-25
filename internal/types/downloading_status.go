@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"strconv"
 	"time"
 )
@@ -25,6 +26,19 @@ type DownloadingStatus struct {
 	ErrorMsg string
 }
 
+type DownloadingStatusMessage struct {
+	// GoroutineContextCancel is the cancel function of the goroutine.
+	GoroutineContextCancel context.CancelFunc
+
+	// MessageId is the id of the message.
+	MessageId int
+	// FilmId is the id of the film.
+	FilmId int64
+
+	// Ticker is the ticker of the goroutine.
+	Ticker *time.Ticker
+}
+
 func (d DownloadingStatus) PrintDownloadingStatus(refreshRateSec int64) string {
 	str := "*Status*: " + printStatus(d.Status) + "\n"
 
@@ -37,9 +51,15 @@ func (d DownloadingStatus) PrintDownloadingStatus(refreshRateSec int64) string {
 
 	str += "*Remaining time*: " + printRemainingTime(d.EstimatedCompletionTime) + "\n"
 
-	str += "_Refreshing every " + strconv.FormatInt(refreshRateSec, 10) + "s_\n"
+	if refreshRateSec > 0 {
+		str += "_Refreshing every " + strconv.FormatInt(refreshRateSec, 10) + "s_\n"
+	} else {
+		str += "_Not refreshing_\n"
+	}
 
-	str += "\n_movieId: " + strconv.Itoa(int(d.FilmId)) + "_"
+	str += "\n"
+	str += "_last update: " + time.Now().Format("2006-01-02 15:04:05") + "_\n"
+	str += "_movieId: " + strconv.Itoa(int(d.FilmId)) + "_"
 
 	return str
 }
@@ -79,7 +99,7 @@ func printProgress(size float64, sizeLeft float64, estimatedCompletionTime time.
 	}
 	str += " of " + strconv.FormatFloat(float64(size)/1024/1024/1024, 'f', 2, 64) + " GB\n"
 
-	// progress bar
+	// progress bar (see https://en.wikipedia.org/wiki/Block_Elements)
 	for i := 0; i < 10; i++ {
 		if progress > float64(i*10) {
 			if progress > float64(i*10)+7.0/8*10 {
@@ -110,7 +130,9 @@ func printProgress(size float64, sizeLeft float64, estimatedCompletionTime time.
 	// download speed
 	downloadSpeed := sizeLeft / 1024 / secLeft
 
-	if downloadSpeed > 1024 {
+	if downloadSpeed <= 0 {
+		str += "- kB/s"
+	} else if downloadSpeed > 1024 {
 		str += strconv.FormatFloat(downloadSpeed/1024, 'f', 2, 64) + " MB/s"
 	} else {
 		str += strconv.FormatFloat(downloadSpeed, 'f', 2, 64) + " kB/s"

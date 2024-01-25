@@ -199,11 +199,13 @@ func GetDownloadingStatus(config configuration.Radarr, filmId int) (types.Downlo
 	c := starr.New(config.ApiKey, config.Endpoint, 0)
 	r := radarr.New(c)
 
-	queue, err := r.GetQueuePage(
-		&starr.PageReq{
-			Filter: radarr.FilterGrabbed,
-		},
-	)
+	_, err := r.SendCommand(&radarr.CommandRequest{
+		Name: "RefreshMonitoredDownloads",
+	})
+	if err != nil {
+		return types.DownloadingStatus{}, err
+	}
+	queue, err := r.GetQueue(0, 100)
 	if err != nil {
 		return types.DownloadingStatus{}, err
 	}

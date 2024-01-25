@@ -72,6 +72,8 @@ const (
 	CallbackFollowDownloadingStatusMovie CallbackAction = "followDownloadingStatus"
 	// CallbackRefreshDownloadingStatusMovie is the action to refresh the downloading status of a movie.
 	CallbackRefreshDownloadingStatusMovie CallbackAction = "refreshDownloadingStatus"
+	// CallbackCancelFollowDownloadingStatusMovie is the action to cancel the downloading status of a movie.
+	CallbackCancelFollowDownloadingStatusMovie CallbackAction = "cancelFollowDownloadingStatus"
 
 	// CallbackNextSerie is the action to get the next page of the series list.
 	CallbackNextSerie CallbackAction = "nextSerie"

@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	"telarr/internal/radarr"
 	"telarr/internal/sonarr"
 	"telarr/internal/types"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/toby3d/telegram"
@@ -27,9 +29,11 @@ type callbacks struct {
 	// list of data to navigate between pages
 	usersData     map[int]interface{}
 	usersCurrPage map[int]int
+	// list of users downloading status
+	usersDownloadingStatus map[int]types.DownloadingStatusMessage
 }
 
-func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
+func (cb *callbacks) handle(ctx context.Context, rcvCallback *telegram.CallbackQuery) {
 	if rcvCallback == nil {
 		return
 	}
@@ -275,14 +279,53 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 			return
 		}
 
-		// remove the last message keyboard
-		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, rcvCallback.Message.Text, nil)
 		// send the downloading status
 		if !status.Found {
 			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "This movie is not in the queue.\n If you just added it, please wait a minute.")
 			return
 		}
-		sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, status.PrintDownloadingStatus(5), telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{telegram.NewInlineKeyboardButton("Refresh now 🔄", types.CallbackRefreshDownloadingStatusMovie.String())}))
+
+		// remove the last message keyboard
+		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, rcvCallback.Message.Text, nil)
+
+		// send the downloading status
+		keyboard := getFollowDownloadingStatusKeyboard()
+		messId := sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, status.PrintDownloadingStatus(5), keyboard)
+
+		// create the goroutine to update the downloading status every 5 seconds
+		ticker := time.NewTicker(5 * time.Second)
+		subCtx, cancel := context.WithCancel(ctx)
+		// if the user is already following a downloading status, we cancel the previous goroutine
+		if _, exist := cb.usersDownloadingStatus[rcvCallback.From.ID]; exist {
+			s, e := getDownloadingStatus(cb.bot, rcvCallback, cb.radarrConfig)
+			if e == nil {
+				editSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, cb.usersDownloadingStatus[rcvCallback.From.ID].MessageId, s.PrintDownloadingStatus(-1))
+			}
+			cb.usersDownloadingStatus[rcvCallback.From.ID].GoroutineContextCancel()
+			time.Sleep(10 * time.Millisecond)
+		}
+		cb.usersDownloadingStatus[rcvCallback.From.ID] = types.DownloadingStatusMessage{
+			GoroutineContextCancel: cancel,
+			MessageId:              messId,
+			FilmId:                 status.FilmId,
+			Ticker:                 ticker,
+		}
+		go func() {
+			for {
+				select {
+				case <-subCtx.Done():
+					delete(cb.usersDownloadingStatus, rcvCallback.From.ID)
+					ticker.Stop()
+					return
+				case <-ticker.C:
+					status, err = getDownloadingStatus(cb.bot, rcvCallback, cb.radarrConfig)
+					if err != nil {
+						continue
+					}
+					editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, cb.usersDownloadingStatus[rcvCallback.From.ID].MessageId, status.PrintDownloadingStatus(5), &keyboard)
+				}
+			}
+		}()
 	case types.CallbackRefreshDownloadingStatusMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("refresh downloading status")
 
@@ -295,8 +338,22 @@ func (cb *callbacks) handle(rcvCallback *telegram.CallbackQuery) {
 			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "This movie is not in the queue anymore.")
 			return
 		}
-		keyboard := telegram.NewInlineKeyboardMarkup([]*telegram.InlineKeyboardButton{telegram.NewInlineKeyboardButton("Refresh now 🔄", types.CallbackRefreshDownloadingStatusMovie.String())})
-		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, status.PrintDownloadingStatus(5), &keyboard)
+		keyboard := getFollowDownloadingStatusKeyboard()
+
+		// if the user is already following the downloading status
+		if cb.usersDownloadingStatus[rcvCallback.From.ID].FilmId == status.FilmId {
+			editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, status.PrintDownloadingStatus(5), &keyboard)
+			cb.usersDownloadingStatus[rcvCallback.From.ID].Ticker.Reset(5 * time.Second)
+			return
+		}
+	case types.CallbackCancelFollowDownloadingStatusMovie:
+		log.Trace().Str("username", rcvCallback.From.Username).Msg("cancel follow downloading status")
+
+		// remove the last message keyboard
+		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, rcvCallback.Message.Text, nil)
+
+		// cancel the goroutine
+		cb.usersDownloadingStatus[rcvCallback.From.ID].GoroutineContextCancel()
 
 		/* Series */
 	// get the next page of the series list
