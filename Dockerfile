@@ -22,6 +22,8 @@ FROM alpine:3.19.0
 
 USER root
 
+ENV CONFIG_PATH=/config
+
 RUN set -eux; \
     apk update; \
     addgroup -g 1000 -S app; \

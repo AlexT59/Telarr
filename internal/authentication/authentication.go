@@ -142,7 +142,7 @@ func (a *Auth) AutorizeNewUser(user User, password string) (AuthStatus, int) {
 	// check if the password is correct
 	if password != a.conf.Telegram.Passwd {
 		a.Attempts[user.Id]++
-		
+
 		// check if the user has reached the maximum number of attempts
 		if a.Attempts[user.Id] >= maxAttempts {
 			// add user to the blacklist
@@ -177,7 +177,7 @@ func (a *Auth) WaitForAutorization(ctx context.Context, user User, bot *telegram
 			status, attemps := a.AutorizeNewUser(user, text)
 			switch status {
 			case AuthStatusAutorized:
-				log.Debug().Str("username", user.Username).Msg("user is now authorized")
+				log.Info().Str("username", user.Username).Msg("user is now authorized")
 
 				_, err := bot.SendMessage(telegram.SendMessage{
 					ChatID: chatId,
