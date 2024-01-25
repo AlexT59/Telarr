@@ -1,6 +1,6 @@
 telegram:
-  token: "token"
-  passwd: "password"
+  token: "token" // token to interact with the telegram bot api
+  passwd: "password" // used to auth a new user of your bot
 
 radarr:
   apiKey: ""

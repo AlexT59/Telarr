@@ -50,8 +50,8 @@ func TestAuth_CheckAutorized(t *testing.T) {
 	}
 
 	type fields struct {
-		Blacklist []int
-		Autorized []int
+		Blacklist []User
+		Autorized []User
 		Attempts  map[int]int
 	}
 	type args struct {
@@ -66,8 +66,8 @@ func TestAuth_CheckAutorized(t *testing.T) {
 		{
 			name: "not autorized",
 			fields: fields{
-				Blacklist: []int{1, 2},
-				Autorized: []int{3, 4},
+				Blacklist: []User{{Id: 1}, {Id: 2}},
+				Autorized: []User{{Id: 3}, {Id: 4}},
 				Attempts:  make(map[int]int),
 			},
 			args: args{
@@ -78,8 +78,8 @@ func TestAuth_CheckAutorized(t *testing.T) {
 		{
 			name: "autorized",
 			fields: fields{
-				Blacklist: []int{1, 2},
-				Autorized: []int{3, 4},
+				Blacklist: []User{{Id: 1}, {Id: 2}},
+				Autorized: []User{{Id: 3}, {Id: 4}},
 				Attempts:  make(map[int]int),
 			},
 			args: args{
@@ -90,8 +90,8 @@ func TestAuth_CheckAutorized(t *testing.T) {
 		{
 			name: "new user",
 			fields: fields{
-				Blacklist: []int{1, 2},
-				Autorized: []int{3, 4},
+				Blacklist: []User{{Id: 1}, {Id: 2}},
+				Autorized: []User{{Id: 3}, {Id: 4}},
 				Attempts:  make(map[int]int),
 			},
 			args: args{
@@ -124,12 +124,12 @@ func TestAuth_Autorize(t *testing.T) {
 	}
 
 	type fields struct {
-		Blacklist []int
-		Autorized []int
+		Blacklist []User
+		Autorized []User
 		Attempts  map[int]int
 	}
 	type args struct {
-		userId   int
+		user     User
 		password string
 	}
 	tests := []struct {
@@ -141,12 +141,12 @@ func TestAuth_Autorize(t *testing.T) {
 		{
 			name: "wrong password",
 			fields: fields{
-				Blacklist: []int{1, 2},
-				Autorized: []int{3, 4},
+				Blacklist: []User{{Id: 1}, {Id: 2}},
+				Autorized: []User{{Id: 3}, {Id: 4}},
 				Attempts:  make(map[int]int),
 			},
 			args: args{
-				userId:   1,
+				user:     User{Id: 1},
 				password: "wrongPassword",
 			},
 			want: AuthStatusWrongPassword,
@@ -154,12 +154,12 @@ func TestAuth_Autorize(t *testing.T) {
 		{
 			name: "autorized",
 			fields: fields{
-				Blacklist: []int{1, 2},
-				Autorized: []int{3, 4},
+				Blacklist: []User{{Id: 1}, {Id: 2}},
+				Autorized: []User{{Id: 3}, {Id: 4}},
 				Attempts:  make(map[int]int),
 			},
 			args: args{
-				userId:   3,
+				user:     User{Id: 3},
 				password: "password",
 			},
 			want: AuthStatusAutorized,
@@ -167,12 +167,12 @@ func TestAuth_Autorize(t *testing.T) {
 		{
 			name: "max attempts",
 			fields: fields{
-				Blacklist: []int{1, 2},
-				Autorized: []int{3, 4},
+				Blacklist: []User{{Id: 1}, {Id: 2}},
+				Autorized: []User{{Id: 3}, {Id: 4}},
 				Attempts:  map[int]int{5: maxAttempts},
 			},
 			args: args{
-				userId:   5,
+				user:     User{Id: 5},
 				password: "password",
 			},
 			want: AuthStatusMaxAttempts,
@@ -186,7 +186,7 @@ func TestAuth_Autorize(t *testing.T) {
 				Attempts:  tt.fields.Attempts,
 				conf:      conf,
 			}
-			if got, _ := a.AutorizeNewUser(tt.args.userId, tt.args.password); got != tt.want {
+			if got, _ := a.AutorizeNewUser(tt.args.user, tt.args.password); got != tt.want {
 				t.Errorf("Auth.Autorize() = %v, want %v", got, tt.want)
 			}
 		})

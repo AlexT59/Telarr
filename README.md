@@ -12,7 +12,7 @@ Telarr is a simple and easy to use bot for telegram designed to interact with *R
 git clone https://github.com/AlexT59/Telarr.git
 ```
 
-3. Edit the configuration file and rename it as `config.yaml`
+3. Edit the `config.yaml.ex` configuration file and rename it as `config.yaml`
 
 4. Edit the docker-compose file to fit your needs
 

@@ -26,11 +26,18 @@ var (
 	authPath = "/opt/telarr/auth"
 )
 
+type User struct {
+	// Id is the id of the user.
+	Id int `json:"id"`
+	// Username is the username of the user.
+	Username string `json:"username"`
+}
+
 type Auth struct {
 	// Blacklist is a list of users that are not allowed to use the bot.
-	Blacklist []int
+	Blacklist []User
 	// Autorized is a list of users that are allowed to use the bot.
-	Autorized []int
+	Autorized []User
 
 	// Attempts is a map of users and the number of attempts to use the bot.
 	Attempts map[int]int
@@ -108,14 +115,14 @@ func New(conf configuration.Configuration) (*Auth, error) {
 func (a *Auth) CheckAutorized(userId int) AuthStatus {
 	// check blacklist
 	for _, u := range a.Blacklist {
-		if u == userId {
+		if u.Id == userId {
 			return AuthStatusBlackListed
 		}
 	}
 
 	// check autorized
 	for _, u := range a.Autorized {
-		if u == userId {
+		if u.Id == userId {
 			return AuthStatusAutorized
 		}
 	}
@@ -125,53 +132,52 @@ func (a *Auth) CheckAutorized(userId int) AuthStatus {
 
 // AutorizeNewUser autorizes the user if the password is correct.
 // Add the user to the blacklist if the maximum number of attempts has been reached.
-func (a *Auth) AutorizeNewUser(userId int, password string) (AuthStatus, int) {
+func (a *Auth) AutorizeNewUser(user User, password string) (AuthStatus, int) {
 	// check if the user is autorized
-	status := a.CheckAutorized(userId)
+	status := a.CheckAutorized(user.Id)
 	if status == AuthStatusAutorized {
 		return AuthStatusAutorized, -1
 	}
 
-	a.Attempts[userId]++
-
-	// check if the user has reached the maximum number of attempts
-	if a.Attempts[userId] >= maxAttempts {
-		// add user to the blacklist
-		err := a.saveBlacklist(userId)
-		if err != nil {
-			return AuthStatusError, -1
-		}
-
-		return AuthStatusMaxAttempts, 0
-	}
-
 	// check if the password is correct
 	if password != a.conf.Telegram.Passwd {
-		return AuthStatusWrongPassword, maxAttempts - a.Attempts[userId]
+		a.Attempts[user.Id]++
+		
+		// check if the user has reached the maximum number of attempts
+		if a.Attempts[user.Id] >= maxAttempts {
+			// add user to the blacklist
+			err := a.saveBlacklist(user)
+			if err != nil {
+				return AuthStatusError, -1
+			}
+
+			return AuthStatusMaxAttempts, 0
+		}
+		return AuthStatusWrongPassword, maxAttempts - a.Attempts[user.Id]
 	}
 
 	// add the user to the autorized list
-	log.Debug().Int("username", userId).Msg("saving autorized user")
-	err := a.saveAutorized(userId)
+	log.Debug().Str("username", user.Username).Msg("saving autorized user")
+	err := a.saveAutorized(user)
 	if err != nil {
 		return AuthStatusError, -1
 	}
-	delete(a.Attempts, userId)
+	delete(a.Attempts, user.Id)
 
 	return AuthStatusAutorized, -1
 }
 
-func (a *Auth) WaitForAutorization(ctx context.Context, userId int, bot *telegram.Bot, textChan chan string, chatId int64) {
+func (a *Auth) WaitForAutorization(ctx context.Context, user User, bot *telegram.Bot, textChan chan string, chatId int64) {
 	// wait for the user to be autorized
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case text := <-textChan:
-			status, attemps := a.AutorizeNewUser(userId, text)
+			status, attemps := a.AutorizeNewUser(user, text)
 			switch status {
 			case AuthStatusAutorized:
-				log.Debug().Int("username", userId).Msg("user is now authorized")
+				log.Debug().Str("username", user.Username).Msg("user is now authorized")
 
 				_, err := bot.SendMessage(telegram.SendMessage{
 					ChatID: chatId,
@@ -183,7 +189,7 @@ func (a *Auth) WaitForAutorization(ctx context.Context, userId int, bot *telegra
 
 				return
 			case AuthStatusWrongPassword:
-				log.Debug().Int("username", userId).Msg("wrong password")
+				log.Debug().Str("username", user.Username).Msg("wrong password")
 
 				_, err := bot.SendMessage(telegram.SendMessage{
 					ChatID: chatId,
@@ -193,7 +199,7 @@ func (a *Auth) WaitForAutorization(ctx context.Context, userId int, bot *telegra
 					log.Err(err).Msg("error when sending message")
 				}
 			case AuthStatusMaxAttempts:
-				log.Debug().Int("username", userId).Msg("maximum number of attempts reached")
+				log.Debug().Str("username", user.Username).Msg("maximum number of attempts reached")
 
 				_, err := bot.SendMessage(telegram.SendMessage{
 					ChatID: chatId,
@@ -205,7 +211,7 @@ func (a *Auth) WaitForAutorization(ctx context.Context, userId int, bot *telegra
 
 				return
 			case AuthStatusError:
-				log.Debug().Int("username", userId).Msg("error when autorizing user")
+				log.Debug().Str("username", user.Username).Msg("error when autorizing user")
 
 				_, err := bot.SendMessage(telegram.SendMessage{
 					ChatID: chatId,
@@ -223,19 +229,19 @@ func (a *Auth) WaitForAutorization(ctx context.Context, userId int, bot *telegra
 
 /* Internal */
 
-func (a *Auth) saveBlacklist(userId int) error {
+func (a *Auth) saveBlacklist(user User) error {
 	// check if the user is already in the blacklist
 	for _, u := range a.Blacklist {
-		if u == userId {
+		if u.Id == user.Id {
 			return nil
 		}
 	}
 
 	// add the user to the blacklist
-	a.Blacklist = append(a.Blacklist, userId)
+	a.Blacklist = append(a.Blacklist, user)
 
 	// save the blacklist to the database
-	bytes, err := json.Marshal(a.Blacklist)
+	bytes, err := json.MarshalIndent(a.Blacklist, "", "  ")
 	if err != nil {
 		log.Err(err).Msg("error when marshaling the blacklist")
 		return err
@@ -249,19 +255,19 @@ func (a *Auth) saveBlacklist(userId int) error {
 	return nil
 }
 
-func (a *Auth) saveAutorized(userId int) error {
+func (a *Auth) saveAutorized(user User) error {
 	// check if the user is already in the autorized list
 	for _, u := range a.Autorized {
-		if u == userId {
+		if u.Id == user.Id {
 			return nil
 		}
 	}
 
 	// add the user to the autorized list
-	a.Autorized = append(a.Autorized, userId)
+	a.Autorized = append(a.Autorized, user)
 
 	// save the autorized list to the database
-	bytes, err := json.Marshal(a.Autorized)
+	bytes, err := json.MarshalIndent(a.Autorized, "", "  ")
 	if err != nil {
 		log.Err(err).Msg("error when marshaling the autorized list")
 		return err
