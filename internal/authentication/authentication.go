@@ -1,6 +1,7 @@
 package authentication
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"strconv"
@@ -25,14 +26,21 @@ var (
 	authPath = "/opt/telarr/auth"
 )
 
+type User struct {
+	// Id is the id of the user.
+	Id int `json:"id"`
+	// Username is the username of the user.
+	Username string `json:"username"`
+}
+
 type Auth struct {
 	// Blacklist is a list of users that are not allowed to use the bot.
-	Blacklist []string
+	Blacklist []User
 	// Autorized is a list of users that are allowed to use the bot.
-	Autorized []string
+	Autorized []User
 
 	// Attempts is a map of users and the number of attempts to use the bot.
-	Attempts map[string]int
+	Attempts map[int]int
 
 	conf configuration.Configuration
 }
@@ -82,7 +90,7 @@ func New(conf configuration.Configuration) (*Auth, error) {
 
 	// create the auth struct
 	auth := &Auth{
-		Attempts: make(map[string]int),
+		Attempts: make(map[int]int),
 		conf:     conf,
 	}
 
@@ -104,17 +112,17 @@ func New(conf configuration.Configuration) (*Auth, error) {
 }
 
 // CheckAutorized checks if the user is autorized.
-func (a *Auth) CheckAutorized(userName string) AuthStatus {
+func (a *Auth) CheckAutorized(userId int) AuthStatus {
 	// check blacklist
 	for _, u := range a.Blacklist {
-		if u == userName {
+		if u.Id == userId {
 			return AuthStatusBlackListed
 		}
 	}
 
 	// check autorized
 	for _, u := range a.Autorized {
-		if u == userName {
+		if u.Id == userId {
 			return AuthStatusAutorized
 		}
 	}
@@ -124,113 +132,116 @@ func (a *Auth) CheckAutorized(userName string) AuthStatus {
 
 // AutorizeNewUser autorizes the user if the password is correct.
 // Add the user to the blacklist if the maximum number of attempts has been reached.
-func (a *Auth) AutorizeNewUser(userName string, password string) (AuthStatus, int) {
+func (a *Auth) AutorizeNewUser(user User, password string) (AuthStatus, int) {
 	// check if the user is autorized
-	status := a.CheckAutorized(userName)
+	status := a.CheckAutorized(user.Id)
 	if status == AuthStatusAutorized {
 		return AuthStatusAutorized, -1
 	}
 
-	// check if the user has reached the maximum number of attempts
-	if a.Attempts[userName] >= maxAttempts {
-		// add user to the blacklist
-		err := a.saveBlacklist(userName)
-		if err != nil {
-			return AuthStatusError, -1
-		}
-
-		return AuthStatusMaxAttempts, 0
-	}
-
 	// check if the password is correct
 	if password != a.conf.Telegram.Passwd {
-		a.Attempts[userName]++
-		return AuthStatusWrongPassword, maxAttempts - a.Attempts[userName]
+		a.Attempts[user.Id]++
+
+		// check if the user has reached the maximum number of attempts
+		if a.Attempts[user.Id] >= maxAttempts {
+			// add user to the blacklist
+			err := a.saveBlacklist(user)
+			if err != nil {
+				return AuthStatusError, -1
+			}
+
+			return AuthStatusMaxAttempts, 0
+		}
+		return AuthStatusWrongPassword, maxAttempts - a.Attempts[user.Id]
 	}
 
 	// add the user to the autorized list
-	log.Debug().Str("username", userName).Msg("saving autorized user")
-	err := a.saveAutorized(userName)
+	log.Debug().Str("username", user.Username).Msg("saving autorized user")
+	err := a.saveAutorized(user)
 	if err != nil {
 		return AuthStatusError, -1
 	}
-	delete(a.Attempts, userName)
+	delete(a.Attempts, user.Id)
 
 	return AuthStatusAutorized, -1
 }
 
-func (a *Auth) WaitForAutorization(userName string, bot *telegram.Bot, textChan chan string, chatId int64) {
+func (a *Auth) WaitForAutorization(ctx context.Context, user User, bot *telegram.Bot, textChan chan string, chatId int64) {
 	// wait for the user to be autorized
 	for {
-		text := <-textChan
-
-		status, attemps := a.AutorizeNewUser(userName, text)
-		switch status {
-		case AuthStatusAutorized:
-			log.Debug().Str("username", userName).Msg("user is now authorized")
-
-			_, err := bot.SendMessage(telegram.SendMessage{
-				ChatID: chatId,
-				Text:   "You are now authorized! 🎉",
-			})
-			if err != nil {
-				log.Err(err).Msg("error when sending message")
-			}
-
+		select {
+		case <-ctx.Done():
 			return
-		case AuthStatusWrongPassword:
-			log.Debug().Str("username", userName).Msg("wrong password")
+		case text := <-textChan:
+			status, attemps := a.AutorizeNewUser(user, text)
+			switch status {
+			case AuthStatusAutorized:
+				log.Info().Str("username", user.Username).Msg("user is now authorized")
 
-			_, err := bot.SendMessage(telegram.SendMessage{
-				ChatID: chatId,
-				Text:   "Wrong password ❌\nYou have " + strconv.Itoa(attemps) + " attempts left.",
-			})
-			if err != nil {
-				log.Err(err).Msg("error when sending message")
+				_, err := bot.SendMessage(telegram.SendMessage{
+					ChatID: chatId,
+					Text:   "You are now authorized! 🎉",
+				})
+				if err != nil {
+					log.Err(err).Msg("error when sending message")
+				}
+
+				return
+			case AuthStatusWrongPassword:
+				log.Debug().Str("username", user.Username).Msg("wrong password")
+
+				_, err := bot.SendMessage(telegram.SendMessage{
+					ChatID: chatId,
+					Text:   "Wrong password ❌\nYou have " + strconv.Itoa(attemps) + " attempts left.",
+				})
+				if err != nil {
+					log.Err(err).Msg("error when sending message")
+				}
+			case AuthStatusMaxAttempts:
+				log.Debug().Str("username", user.Username).Msg("maximum number of attempts reached")
+
+				_, err := bot.SendMessage(telegram.SendMessage{
+					ChatID: chatId,
+					Text:   "You have reached the maximum number of attempts.\nYou are now blacklisted!",
+				})
+				if err != nil {
+					log.Err(err).Msg("error when sending message")
+				}
+
+				return
+			case AuthStatusError:
+				log.Debug().Str("username", user.Username).Msg("error when autorizing user")
+
+				_, err := bot.SendMessage(telegram.SendMessage{
+					ChatID: chatId,
+					Text:   "An error occurred while checking your authorization.\nPlease contact the administrator.",
+				})
+				if err != nil {
+					log.Err(err).Msg("error when sending message")
+				}
+
+				return
 			}
-		case AuthStatusMaxAttempts:
-			log.Debug().Str("username", userName).Msg("maximum number of attempts reached")
-
-			_, err := bot.SendMessage(telegram.SendMessage{
-				ChatID: chatId,
-				Text:   "You have reached the maximum number of attempts.\nYou are now blacklisted!",
-			})
-			if err != nil {
-				log.Err(err).Msg("error when sending message")
-			}
-
-			return
-		case AuthStatusError:
-			log.Debug().Str("username", userName).Msg("error when autorizing user")
-
-			_, err := bot.SendMessage(telegram.SendMessage{
-				ChatID: chatId,
-				Text:   "An error occurred while checking your authorization.\nPlease contact the administrator.",
-			})
-			if err != nil {
-				log.Err(err).Msg("error when sending message")
-			}
-
-			return
 		}
 	}
 }
 
 /* Internal */
 
-func (a *Auth) saveBlacklist(userName string) error {
+func (a *Auth) saveBlacklist(user User) error {
 	// check if the user is already in the blacklist
 	for _, u := range a.Blacklist {
-		if u == userName {
+		if u.Id == user.Id {
 			return nil
 		}
 	}
 
 	// add the user to the blacklist
-	a.Blacklist = append(a.Blacklist, userName)
+	a.Blacklist = append(a.Blacklist, user)
 
 	// save the blacklist to the database
-	bytes, err := json.Marshal(a.Blacklist)
+	bytes, err := json.MarshalIndent(a.Blacklist, "", "  ")
 	if err != nil {
 		log.Err(err).Msg("error when marshaling the blacklist")
 		return err
@@ -244,19 +255,19 @@ func (a *Auth) saveBlacklist(userName string) error {
 	return nil
 }
 
-func (a *Auth) saveAutorized(userName string) error {
+func (a *Auth) saveAutorized(user User) error {
 	// check if the user is already in the autorized list
 	for _, u := range a.Autorized {
-		if u == userName {
+		if u.Id == user.Id {
 			return nil
 		}
 	}
 
 	// add the user to the autorized list
-	a.Autorized = append(a.Autorized, userName)
+	a.Autorized = append(a.Autorized, user)
 
 	// save the autorized list to the database
-	bytes, err := json.Marshal(a.Autorized)
+	bytes, err := json.MarshalIndent(a.Autorized, "", "  ")
 	if err != nil {
 		log.Err(err).Msg("error when marshaling the autorized list")
 		return err

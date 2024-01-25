@@ -1,13 +1,21 @@
 version: "3"
 
+networks:
+  private_network:
+    name: wirepius_private_network
+    external: true
+
 services:
   telarr:
-    image: "linuxserver/alpine-base"
-    container_name: "telarr"
+    image: "telarr:latest"
+    container_name: telarr
+    restart: unless-stopped
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/London
+      - TZ=Europe/Paris
+      - LOG_LEVEL=info
     volumes:
-      - /path/to/appdata/configFile.yaml:/config/config.yaml
-      - /path/to/auth/files:/opt/telarr/auth # autorized.json, blacklist.json, admin.json
+      - /path/to/appdata/config.yaml:/config/config.yaml
+      - /path/to/auth/files:/opt/telarr/auth # autorized.json, blacklist.json
+    networks:
+      private_network:
+        ipv4_address: 10.2.0.16

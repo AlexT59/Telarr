@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"telarr/configuration"
-	"telarr/internal/messages"
+	"telarr/internal/updates"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -17,7 +17,18 @@ func main() {
 		os.Exit(ret)
 	}()
 
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04:05"}).With().Logger()
+	// get the log level
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "info"
+	}
+	lv, err := zerolog.ParseLevel(logLevel)
+	if err != nil {
+		log.Err(err).Msg("error when parsing the log level")
+		ret = 1
+		return
+	}
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04:05"}).Level(lv).With().Logger()
 
 	// getting the configuration
 	log.Debug().Msg("getting the configuration")
@@ -35,8 +46,8 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	// handle messages
-	mess, err := messages.New(config)
+	// handle updates
+	mess, err := updates.New(config)
 	if err != nil {
 		log.Err(err).Msg("error when creating the messages handler")
 		ret = 1
