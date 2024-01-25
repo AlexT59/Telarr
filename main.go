@@ -17,7 +17,18 @@ func main() {
 		os.Exit(ret)
 	}()
 
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04:05"}).With().Logger()
+	// get the log level
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "info"
+	}
+	lv, err := zerolog.ParseLevel(logLevel)
+	if err != nil {
+		log.Err(err).Msg("error when parsing the log level")
+		ret = 1
+		return
+	}
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04:05"}).Level(lv).With().Logger()
 
 	// getting the configuration
 	log.Debug().Msg("getting the configuration")

@@ -11,9 +11,8 @@ services:
     container_name: telarr
     restart: unless-stopped
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/London
+      - TZ=Europe/Paris
+      - LOG_LEVEL=info
     volumes:
       - /path/to/appdata/config.yaml:/config/config.yaml
       - /path/to/auth/files:/opt/telarr/auth # autorized.json, blacklist.json
