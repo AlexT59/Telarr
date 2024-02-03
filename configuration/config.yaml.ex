@@ -9,3 +9,5 @@ radarr:
 sonarr:
   apiKey: ""
   endpoint: "x.x.x.x:8989"  // with or without http(s)://
+
+pathForDiskUsage: "." // path to check disk usage

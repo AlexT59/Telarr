@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"telarr/internal/types"
 
+	"github.com/rs/zerolog/log"
 	"gitlab.com/toby3d/telegram"
 )
 
@@ -17,8 +18,6 @@ const (
 	mediaTypeMovie mediaType = "movie"
 	mediaTypeSerie mediaType = "serie"
 )
-
-const pathForDiskUsage = "."
 
 // getMsgPageInfo returns the current page and the total number of pages.
 func getMsgPageInfo(message string) (int, int, error) {
@@ -216,11 +215,12 @@ func getFollowDownloadingStatusKeyboard(followButtonInstedOfStopRefresh bool) te
 	return telegram.NewInlineKeyboardMarkup(kRow)
 }
 
-func getDiskUsage() (types.DiskStatus, error) {
+func getDiskUsage(path string) (types.DiskStatus, error) {
+	log.Debug().Str("path", path).Msg("Getting disk usage")
 	var disk types.DiskStatus
 
 	fs := syscall.Statfs_t{}
-	err := syscall.Statfs(pathForDiskUsage, &fs)
+	err := syscall.Statfs(path, &fs)
 	if err != nil {
 		return types.DiskStatus{}, err
 	}

@@ -23,6 +23,8 @@ type Configuration struct {
 	Telegram Telegram `yaml:"telegram"`
 	Radarr   Radarr   `yaml:"radarr"`
 	Sonarr   Sonarr   `yaml:"sonarr"`
+
+	PathForDiskUsage string `yaml:"pathForDiskUsage"`
 }
 
 type Telegram struct {
@@ -37,7 +39,7 @@ type Radarr struct {
 }
 
 type Sonarr struct {
-	ApiKey  string `yaml:"apiKey"`
+	ApiKey   string `yaml:"apiKey"`
 	Endpoint string `yaml:"endpoint"`
 }
 

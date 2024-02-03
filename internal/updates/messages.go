@@ -23,8 +23,9 @@ type messages struct {
 	// Bot is the telegram bot.
 	bot *telegram.Bot
 
-	radarrConfig configuration.Radarr
-	sonarrConfig configuration.Sonarr
+	radarrConfig     configuration.Radarr
+	sonarrConfig     configuration.Sonarr
+	pathForDiskUsage string
 
 	// list of users actions
 	usersAction map[int]types.Action
@@ -117,7 +118,7 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 			mess.bot.DeleteMessage(rcvMess.Chat.ID, mId)
 
 			mId = sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Getting disk usage...")
-			diskStatus, err := getDiskUsage()
+			diskStatus, err := getDiskUsage(mess.pathForDiskUsage)
 			if err != nil {
 				log.Err(err).Msg("error when getting disk usage")
 			}
