@@ -104,4 +104,7 @@ const (
 
 	// CallbackCancel is the action to cancel the current action.
 	CallbackCancel CallbackAction = "cancel"
+
+	// CallbackWakeOnLan is the action to wake on lan the PC.
+	CallbackWakeOnLan CallbackAction = "wakeOnLan"
 )

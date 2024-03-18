@@ -3,6 +3,7 @@ package updates
 import (
 	"context"
 	"fmt"
+	"net"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"telarr/internal/types"
 	"time"
 
+	"github.com/mdlayher/wol"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/toby3d/telegram"
 )
@@ -23,6 +25,7 @@ type callbacks struct {
 
 	radarrConfig configuration.Radarr
 	sonarrConfig configuration.Sonarr
+	wolConfig    configuration.WakeOnLan
 
 	// list of users actions
 	usersAction map[int]types.Action
@@ -581,6 +584,37 @@ func (cb *callbacks) handle(ctx context.Context, rcvCallback *telegram.CallbackQ
 		cb.bot.DeleteMessage(rcvCallback.Message.Chat.ID, rcvCallback.Message.ID)
 
 		sendMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, "Action canceled ✅", telegram.NewReplyKeyboardRemove(false))
+	case types.CallbackWakeOnLan:
+		log.Trace().Str("username", rcvCallback.From.Username).Str("mac", cb.wolConfig.MacAddress).Msg("sending Wake-on-LAN")
+
+		// send the Wake-on-LAN
+		c, err := wol.NewClient()
+		if err != nil {
+			log.Err(err).Msg("error when creating Wake-on-LAN client")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while sending the Wake-on-LAN.\nPlease contact the administrator.")
+			return
+		}
+		defer c.Close()
+
+		target, err := net.ParseMAC(cb.wolConfig.MacAddress)
+		if err != nil {
+			log.Err(err).Msg("error when parsing MAC address")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while parsing the MAC address.\nPlease contact the administrator.")
+			return
+		}
+		var password []byte
+		if cb.wolConfig.Password != "" {
+			password = []byte(cb.wolConfig.Password)
+		}
+
+		err = c.WakePassword(cb.wolConfig.IP, target, password)
+		if err != nil {
+			log.Err(err).Msg("error when sending Wake-on-LAN")
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "An error occurred while sending the Wake-on-LAN.\nPlease contact the administrator.")
+			return
+		}
+
+		sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "Wake-on-LAN sent successfully! ✅")
 
 	default:
 		log.Warn().Str("username", rcvCallback.From.Username).Str("callback", rcvCallback.Data).Msg("unknown callback")

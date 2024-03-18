@@ -20,9 +20,10 @@ const (
 )
 
 type Configuration struct {
-	Telegram Telegram `yaml:"telegram"`
-	Radarr   Radarr   `yaml:"radarr"`
-	Sonarr   Sonarr   `yaml:"sonarr"`
+	Telegram  Telegram  `yaml:"telegram"`
+	Radarr    Radarr    `yaml:"radarr"`
+	Sonarr    Sonarr    `yaml:"sonarr"`
+	WakeOnLan WakeOnLan `yaml:"wakeOnLan"`
 
 	PathForDiskUsage string `yaml:"pathForDiskUsage"`
 }
@@ -41,6 +42,12 @@ type Radarr struct {
 type Sonarr struct {
 	ApiKey   string `yaml:"apiKey"`
 	Endpoint string `yaml:"endpoint"`
+}
+
+type WakeOnLan struct {
+	MacAddress string `yaml:"mac"`
+	IP         string `yaml:"ip"`
+	Password   string `yaml:"password"`
 }
 
 // GetConfiguration returns the configuration

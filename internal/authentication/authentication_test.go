@@ -108,7 +108,7 @@ func TestAuth_CheckAutorized(t *testing.T) {
 				Attempts:  tt.fields.Attempts,
 				conf:      conf,
 			}
-			if got := a.CheckAutorized(tt.args.userId); got != tt.want {
+			if got, _ := a.CheckAutorized(tt.args.userId); got != tt.want {
 				t.Errorf("Auth.CheckAutorized() = %v, want %v", got, tt.want)
 			}
 		})

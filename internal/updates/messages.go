@@ -34,7 +34,7 @@ type messages struct {
 	usersCurrPage map[int]int
 }
 
-func (mess *messages) handle(rcvMess *telegram.Message) {
+func (mess *messages) handle(rcvMess *telegram.Message, isAdmin bool) {
 	if rcvMess == nil {
 		log.Warn().Msg("received nil message")
 		return
@@ -135,9 +135,17 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 			delete(mess.usersCurrPage, rcvMess.From.ID)
 
 			sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, "Action canceled ✅", telegram.NewReplyKeyboardRemove(false))
+		case "admin":
+			if !isAdmin {
+				log.Warn().Str("username", rcvMess.From.Username).Msg("user is not admin")
+				sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "You are not an administrator.")
+				return
+			}
+			sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, "Select an action:", getAdminKeyboard())
 
 		default:
 			log.Warn().Str("username", rcvMess.From.Username).Str("command", rcvMess.Command()).Msg("unknown command")
+			sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "I don't understand this command.\nPlease use /help to see the commands list.")
 		}
 	} else {
 		// if it's a message
