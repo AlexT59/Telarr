@@ -66,7 +66,12 @@ func (s Serie) PrintSerieDetails() string {
 		str += genre
 	}
 	str += "\n"
-	str += "📝 " + "*Overview*: " + s.Overview + "\n"
+	str += "📝 " + "*Overview*: "
+	if len(s.Overview) > 175 {
+		str += s.Overview[:175] + "..."
+	} else {
+		str += s.Overview
+	}
 	str += "\n"
 
 	str += "💾 " + "*Size*: " + strconv.FormatFloat(s.Size, 'f', 2, 64) + " GB\n"

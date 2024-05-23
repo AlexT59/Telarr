@@ -19,6 +19,8 @@ const (
 	blacklistFile = "blacklist.json"
 	// autorizedFile is the name of the file that contains the autorized.
 	autorizedFile = "autorized.json"
+	// adminFile is the name of the file that contains the admins.
+	adminFile = "admin.json"
 )
 
 var (
@@ -38,6 +40,8 @@ type Auth struct {
 	Blacklist []User
 	// Autorized is a list of users that are allowed to use the bot.
 	Autorized []User
+	// Admins is a list of users that are allowed to use the admin commands.
+	Admins []User
 
 	// Attempts is a map of users and the number of attempts to use the bot.
 	Attempts map[int]int
@@ -87,6 +91,14 @@ func New(conf configuration.Configuration) (*Auth, error) {
 			return nil, err
 		}
 	}
+	// create the admin file if it does not exist
+	_, err = os.Stat(authPath + "/" + adminFile)
+	if os.IsNotExist(err) {
+		_, err = os.Create(authPath + "/" + adminFile)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// create the auth struct
 	auth := &Auth{
@@ -108,33 +120,40 @@ func New(conf configuration.Configuration) (*Auth, error) {
 	}
 	json.Unmarshal(bytes, &auth.Autorized)
 
+	// read the admin from the database
+	bytes, err = os.ReadFile(authPath + "/" + adminFile)
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal(bytes, &auth.Admins)
+
 	return auth, nil
 }
 
 // CheckAutorized checks if the user is autorized.
-func (a *Auth) CheckAutorized(userId int) AuthStatus {
+func (a *Auth) CheckAutorized(userId int) (AuthStatus, bool) {
 	// check blacklist
 	for _, u := range a.Blacklist {
 		if u.Id == userId {
-			return AuthStatusBlackListed
+			return AuthStatusBlackListed, false
 		}
 	}
 
 	// check autorized
 	for _, u := range a.Autorized {
 		if u.Id == userId {
-			return AuthStatusAutorized
+			return AuthStatusAutorized, a.isAdmin(userId)
 		}
 	}
 
-	return AuthStatusNewUser
+	return AuthStatusNewUser, false
 }
 
 // AutorizeNewUser autorizes the user if the password is correct.
 // Add the user to the blacklist if the maximum number of attempts has been reached.
 func (a *Auth) AutorizeNewUser(user User, password string) (AuthStatus, int) {
 	// check if the user is autorized
-	status := a.CheckAutorized(user.Id)
+	status, _ := a.CheckAutorized(user.Id)
 	if status == AuthStatusAutorized {
 		return AuthStatusAutorized, -1
 	}
@@ -228,6 +247,15 @@ func (a *Auth) WaitForAutorization(ctx context.Context, user User, bot *telegram
 }
 
 /* Internal */
+
+func (a *Auth) isAdmin(userId int) bool {
+	for _, u := range a.Admins {
+		if userId == u.Id {
+			return true
+		}
+	}
+	return false
+}
 
 func (a *Auth) saveBlacklist(user User) error {
 	// check if the user is already in the blacklist

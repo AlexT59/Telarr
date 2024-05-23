@@ -71,17 +71,19 @@ func New(config configuration.Configuration) (*Updates, error) {
 		wg:          &sync.WaitGroup{},
 		usersAction: usersAction,
 		mess: &messages{
-			bot:           bot,
-			radarrConfig:  config.Radarr,
-			sonarrConfig:  config.Sonarr,
-			usersAction:   usersAction,
-			usersData:     usersData,
-			usersCurrPage: usersCurrPage,
+			bot:              bot,
+			radarrConfig:     config.Radarr,
+			sonarrConfig:     config.Sonarr,
+			pathForDiskUsage: config.PathForDiskUsage,
+			usersAction:      usersAction,
+			usersData:        usersData,
+			usersCurrPage:    usersCurrPage,
 		},
 		cb: &callbacks{
 			bot:                    bot,
 			radarrConfig:           config.Radarr,
 			sonarrConfig:           config.Sonarr,
+			wolConfig:              config.WakeOnLan,
 			usersAction:            usersAction,
 			usersData:              usersData,
 			usersCurrPage:          usersCurrPage,
@@ -148,7 +150,7 @@ func (upd *Updates) Start(ctx context.Context) error {
 				waitingForPasswordMu.Unlock()
 
 				// check authorization
-				authorized := auth.CheckAutorized(user.Id)
+				authorized, isAdmin := auth.CheckAutorized(user.Id)
 				switch authorized {
 				// if the user is not authorized
 				case authentication.AuthStatusBlackListed:
@@ -190,7 +192,7 @@ func (upd *Updates) Start(ctx context.Context) error {
 							Str("fromUsername", user.Username).
 							Str("text", rcvUpdate.Message.Text).
 							Msg("new message")
-						upd.mess.handle(rcvUpdate.Message)
+						upd.mess.handle(rcvUpdate.Message, isAdmin)
 					} else if rcvUpdate.IsCallbackQuery() {
 						// if it's a callback query
 						log.Trace().

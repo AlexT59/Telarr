@@ -23,8 +23,9 @@ type messages struct {
 	// Bot is the telegram bot.
 	bot *telegram.Bot
 
-	radarrConfig configuration.Radarr
-	sonarrConfig configuration.Sonarr
+	radarrConfig     configuration.Radarr
+	sonarrConfig     configuration.Sonarr
+	pathForDiskUsage string
 
 	// list of users actions
 	usersAction map[int]types.Action
@@ -33,7 +34,7 @@ type messages struct {
 	usersCurrPage map[int]int
 }
 
-func (mess *messages) handle(rcvMess *telegram.Message) {
+func (mess *messages) handle(rcvMess *telegram.Message, isAdmin bool) {
 	if rcvMess == nil {
 		log.Warn().Msg("received nil message")
 		return
@@ -117,7 +118,7 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 			mess.bot.DeleteMessage(rcvMess.Chat.ID, mId)
 
 			mId = sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "Getting disk usage...")
-			diskStatus, err := getDiskUsage()
+			diskStatus, err := getDiskUsage(mess.pathForDiskUsage)
 			if err != nil {
 				log.Err(err).Msg("error when getting disk usage")
 			}
@@ -134,9 +135,17 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 			delete(mess.usersCurrPage, rcvMess.From.ID)
 
 			sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, "Action canceled ✅", telegram.NewReplyKeyboardRemove(false))
+		case "admin":
+			if !isAdmin {
+				log.Warn().Str("username", rcvMess.From.Username).Msg("user is not admin")
+				sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "You are not an administrator.")
+				return
+			}
+			sendMessageWithKeyboard(mess.bot, rcvMess.Chat.ID, "Select an action:", getAdminKeyboard())
 
 		default:
 			log.Warn().Str("username", rcvMess.From.Username).Str("command", rcvMess.Command()).Msg("unknown command")
+			sendSimpleMessage(mess.bot, rcvMess.Chat.ID, "I don't understand this command.\nPlease use /help to see the commands list.")
 		}
 	} else {
 		// if it's a message
@@ -144,12 +153,6 @@ func (mess *messages) handle(rcvMess *telegram.Message) {
 
 		if action, exist := mess.usersAction[rcvMess.From.ID]; exist {
 			delete(mess.usersAction, rcvMess.From.ID)
-
-			if action.(types.UserAction) == types.UserActionRemoveSerie {
-				println("remove serie")
-			} else {
-				println("not remove serie")
-			}
 
 			switch action.(types.UserAction) {
 			/* Movies */

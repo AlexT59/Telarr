@@ -74,6 +74,8 @@ radarr:
 sonarr:
     apiKey: "apiKeyS"
     endpoint: "https://endpointS"
+
+pathForDiskUsage: "/mnt"
 `,
 			want: Configuration{
 				Telegram: Telegram{
@@ -88,6 +90,7 @@ sonarr:
 					ApiKey:  "apiKeyS",
 					Endpoint: "https://endpointS",
 				},
+				PathForDiskUsage: "/mnt",
 			},
 			wantErr: false,
 		},
