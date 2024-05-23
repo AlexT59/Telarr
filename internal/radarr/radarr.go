@@ -244,7 +244,7 @@ func toFilmStruct(film *radarr.Movie) Film {
 		Size:          0,
 	}
 
-	if film.HasFile {
+	if film.MovieFile != nil {
 		f.Downloaded = true
 		if film.MovieFile != nil {
 			f.Quality = film.MovieFile.Quality.Quality.Name
@@ -255,21 +255,18 @@ func toFilmStruct(film *radarr.Movie) Film {
 	}
 
 	// get the rating from the ratings list
-	r := 0.0
-	nbSources := 0
-	for _, rating := range film.Ratings {
-		if rating.Type == "user" {
-			if rating.Value > 10 {
-				// value in %, convert it to /10
-				rating.Value /= 10
-			}
-			r += rating.Value
-			nbSources++
+	for src, rating := range film.Ratings {
+		if src == "tmdb" {
+			f.Rating += rating.Value
 			f.NumberOfVotes += int(rating.Votes)
+			f.RatingSrc = "TMDb"
 			break
+		} else if src == "imdb" {
+			f.Rating += rating.Value
+			f.NumberOfVotes += int(rating.Votes)
+			f.RatingSrc = "IMDb"
 		}
 	}
-	f.Rating = r / float64(nbSources)
 
 	// get the cover image
 	for _, image := range film.Images {

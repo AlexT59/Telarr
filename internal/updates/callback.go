@@ -364,9 +364,19 @@ func (cb *callbacks) handle(ctx context.Context, rcvCallback *telegram.CallbackQ
 	case types.CallbackCancelFollowDownloadingStatusMovie:
 		log.Trace().Str("username", rcvCallback.From.Username).Msg("cancel follow downloading status")
 
+		status, err := getDownloadingStatus(cb.bot, rcvCallback, cb.radarrConfig)
+		if err != nil {
+			return
+		}
+
+		if !status.Found {
+			sendSimpleMessage(cb.bot, rcvCallback.Message.Chat.ID, "This movie is not in the queue anymore.")
+			return
+		}
+
 		// edit message with new keyboard
 		keyboard := getFollowDownloadingStatusKeyboard(true)
-		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, rcvCallback.Message.Text, &keyboard)
+		editMessageWithKeyboard(cb.bot, rcvCallback.Message.Chat.ID, rcvCallback.Message.ID, status.PrintDownloadingStatus(0), &keyboard)
 
 		// cancel the goroutine
 		if ds, exist := cb.usersDownloadingStatus[rcvCallback.From.ID]; exist {

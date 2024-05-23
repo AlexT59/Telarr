@@ -26,6 +26,8 @@ type Film struct {
 	Rating float64
 	// NumberOfVotes is the number of votes for the film.
 	NumberOfVotes int
+	// RatingSrc is the source of the rating (e.g. "tmdb").
+	RatingSrc string
 
 	// Overview is the overview of the film.
 	Overview string
@@ -60,7 +62,7 @@ func (f Film) PrintMovieTitleAndInLibrary() string {
 func (f Film) PrintMovieDetails() string {
 	str := "📅 " + "*Release year*: " + strconv.Itoa(f.Year) + "\n"
 	str += "🕒 " + "*Duration*: " + strconv.Itoa(f.Runtime) + " mins" + "\n"
-	str += "⭐ " + "*Rating*: " + strconv.FormatFloat(f.Rating, 'f', 1, 64) + "/10 (_" + strconv.Itoa(f.NumberOfVotes) + " votes_)\n"
+	str += "⭐ " + "*Rating* (" + f.RatingSrc + "): " + strconv.FormatFloat(f.Rating, 'f', 1, 64) + "/10 (_" + strconv.Itoa(f.NumberOfVotes) + " votes_)\n"
 	str += "🎞 " + "*Genres*: "
 	for i, genre := range f.Genres {
 		if i != 0 {
@@ -70,8 +72,13 @@ func (f Film) PrintMovieDetails() string {
 	}
 	str += "\n"
 	str += "🏢 " + "*Studio*: " + f.Studio + "\n"
-	str += "📝 " + "*Overview*: " + f.Overview + "\n"
-	str += "\n"
+	str += "📝 " + "*Overview*: "
+	if len(f.Overview) > 175 {
+		str += f.Overview[:175] + "..."
+	} else {
+		str += f.Overview
+	}
+	str += " [TMDb](https://www.themoviedb.org/movie/" + strconv.Itoa(int(f.TmdbId)) + ") 🔗\n\n"
 
 	str += "📡 " + "*Status*: "
 	if f.Downloaded {
@@ -82,7 +89,9 @@ func (f Film) PrintMovieDetails() string {
 		str += "Missing ❌\n"
 	}
 
-	str += "\n🔗 [The Movie DB](https://www.themoviedb.org/movie/" + strconv.Itoa(int(f.TmdbId)) + ")"
+	str += "\n"
+
+	str += "[__View in Radarr__](nasalex.hole:30025/movie/" + strconv.Itoa(int(f.TmdbId)) + ")"
 
 	return str
 }

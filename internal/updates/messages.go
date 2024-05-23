@@ -154,12 +154,6 @@ func (mess *messages) handle(rcvMess *telegram.Message, isAdmin bool) {
 		if action, exist := mess.usersAction[rcvMess.From.ID]; exist {
 			delete(mess.usersAction, rcvMess.From.ID)
 
-			if action.(types.UserAction) == types.UserActionRemoveSerie {
-				println("remove serie")
-			} else {
-				println("not remove serie")
-			}
-
 			switch action.(types.UserAction) {
 			/* Movies */
 			case types.UserActionLookMovieToAdd:
