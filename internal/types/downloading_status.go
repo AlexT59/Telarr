@@ -51,21 +51,20 @@ func (d DownloadingStatus) PrintDownloadingStatus(refreshRateSec int64) string {
 
 	str += "*Remaining time*: " + printRemainingTime(d.EstimatedCompletionTime) + "\n"
 
+	str += "\n"
+	str += "_last update: " + time.Now().Format("2006-01-02 15:04:05") + "_\n"
 	if refreshRateSec > 0 {
 		str += "_Refreshing every " + strconv.FormatInt(refreshRateSec, 10) + "s_\n"
 	} else {
 		str += "_Not refreshing_\n"
 	}
-
-	str += "\n"
-	str += "_last update: " + time.Now().Format("2006-01-02 15:04:05") + "_\n"
 	str += "_movieId: " + strconv.Itoa(int(d.FilmId)) + "_"
 
 	return str
 }
 
 func (d DownloadingStatus) IsImported() bool {
-	return d.Status == "imported"
+	return d.Status == "imported" || (d.Status != "failed" && d.Status != "failedPending" && d.Status != "downloading" && d.Status != "importing" && d.Status != "importPending")
 }
 
 func printStatus(status string) string {
@@ -83,7 +82,7 @@ func printStatus(status string) string {
 	case "failed":
 		return "🔴 Failed"
 	default:
-		return "🔴 Unknown"
+		return "🔴 Unknown (_" + status + "_)"
 	}
 }
 
